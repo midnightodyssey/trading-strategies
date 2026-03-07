@@ -1,0 +1,136 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# runner_config.yaml  —  Daily Strategy Runner Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# QUICK START
+#   1. Set mode: paper  (then live once you're confident)
+#   2. Edit symbols to your watchlist
+#   3. Choose one or more strategies with params (see available list below)
+#   4. Set notifications.webhook.enabled: true and paste your Discord/Slack URL
+#   5. Run:  python -m runner.daily_runner
+#
+# AVAILABLE STRATEGIES
+#   EMACrossover          fast (int), slow (int)         — default 12/26
+#   SMACrossover          fast (int), slow (int)         — default 20/50
+#   RSIMeanReversion      period (int), oversold (float), overbought (float)
+#   BollingerMeanReversion period (int), num_std (float) — default 20/2.0
+#   PriceBreakout         window (int)                   — default 20
+#
+# SENSITIVE VALUES
+#   Replace any value with ${ENV_VAR} to read from an environment variable.
+#   Example:  password: "${EMAIL_PASS}"
+#   Set env vars in your shell, .env file (loaded before running), or
+#   /etc/environment on Linux VPS.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── MODE ──────────────────────────────────────────────────────────────────────
+# paper: uses your IBKR paper account (safe, no real money)
+# live:  uses your real account (requires calling confirm_live_trading() guard)
+mode: paper
+
+
+# ── IB GATEWAY / TWS CONNECTION ───────────────────────────────────────────────
+connection:
+  host:       "127.0.0.1"   # IP of the machine running IB Gateway / TWS
+  gateway:    true           # true  = IB Gateway (headless, VPS-recommended)
+                             # false = TWS (full GUI, for local development)
+  client_id:  10             # Use 10+ to avoid conflicts with manual sessions
+  timeout:    30             # seconds before giving up on connection
+
+
+# ── MARKET TIMING & DATA ──────────────────────────────────────────────────────
+schedule:
+  timezone:       "America/New_York"
+  entry_time:     "09:35"   # Place orders 5 min after open (avoids opening chaos)
+  exit_time:      "15:45"   # Force-close all positions 15 min before close
+  lookback_bars:  200       # Calendar days of daily OHLCV history to fetch
+                            # Must be >= your slowest strategy indicator period
+
+
+# ── SYMBOLS ───────────────────────────────────────────────────────────────────
+# Standard US equities on NYSE/NASDAQ. All must be tradeable on your account.
+symbols:
+  - AAPL
+  - MSFT
+  - GOOGL
+  - AMZN
+  - SPY    # S&P 500 ETF — good diversifier, highly liquid
+
+
+# ── STRATEGIES ────────────────────────────────────────────────────────────────
+# List one or more strategies. Signals are combined via majority vote:
+#   [+1, +1, -1] → +1 (long)  |  [+1, -1] → 0 (flat)
+#
+# Start with one strategy; add more as you backtest and validate them.
+strategies:
+  - name: EMACrossover
+    params:
+      fast: 12
+      slow: 26
+
+  # Uncomment to add a second strategy to the voting pool:
+  # - name: SMACrossover
+  #   params:
+  #     fast: 20
+  #     slow: 50
+
+  # Uncomment to add RSI mean-reversion:
+  # - name: RSIMeanReversion
+  #   params:
+  #     period: 14
+  #     oversold: 30
+  #     overbought: 70
+
+
+# ── POSITION SIZING ───────────────────────────────────────────────────────────
+sizing:
+  method:           fixed_fraction   # fixed_fraction | vol_target
+
+  # fixed_fraction params (used when method: fixed_fraction)
+  risk_pct:         0.01    # risk 1% of equity per trade
+  stop_pct:         0.02    # stop loss 2% below entry price
+
+  # Reward:risk ratio — take-profit = stop distance × reward_ratio
+  # e.g. stop=2%, ratio=2 → take-profit triggers at +4%
+  reward_ratio:     2.0
+
+  # vol_target params (used when method: vol_target)
+  target_vol:       0.10    # target 10% annualised portfolio volatility
+
+  # Hard caps (apply to both methods)
+  max_position_pct: 0.10    # never allocate more than 10% of equity to one symbol
+  allow_short:      false   # set true only if your account has short-selling enabled
+
+
+# ── RISK GUARDS ───────────────────────────────────────────────────────────────
+risk:
+  max_drawdown_pct:   0.05   # if current drawdown exceeds 5% → no new positions
+  max_open_positions: 5      # maximum concurrent open positions across all symbols
+
+
+# ── LOGGING ───────────────────────────────────────────────────────────────────
+logging:
+  level: INFO                # DEBUG | INFO | WARNING | ERROR
+  file:  "logs/daily_runner.log"   # rotating log (10 MB × 5 backups)
+
+
+# ── NOTIFICATIONS ─────────────────────────────────────────────────────────────
+notifications:
+
+  # Discord / Slack / Teams webhook (easiest to set up — recommended)
+  webhook:
+    enabled: false
+    url: ""   # paste your webhook URL here, e.g.:
+              # Discord: https://discord.com/api/webhooks/{id}/{token}
+              # Slack:   https://hooks.slack.com/services/...
+              # Teams:   https://your-org.webhook.office.com/...
+
+  # Email via SMTP (Gmail, SendGrid, etc.)
+  email:
+    enabled:   false
+    smtp_host: "smtp.gmail.com"
+    smtp_port: 587
+    username:  "${EMAIL_USER}"     # set EMAIL_USER env var
+    password:  "${EMAIL_PASS}"     # set EMAIL_PASS env var (use app password for Gmail)
+    from_addr: "${EMAIL_USER}"
+    to_addr:   "you@example.com"

@@ -1,0 +1,94 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.yml  —  IB Gateway (headless) for VPS deployment
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Uses the community-maintained ib-gateway Docker image:
+#   https://github.com/gnzsnz/ib-gateway-docker
+#
+# SETUP
+#   1. Install Docker + Docker Compose on your VPS:
+#        curl -fsSL https://get.docker.com | sh
+#        sudo apt install docker-compose-plugin
+#
+#   2. Create a .env.ibkr file in this directory (NEVER commit this file):
+#        IB_USERNAME=your_ibkr_username
+#        IB_PASSWORD=your_ibkr_password
+#        TRADING_MODE=paper        # or "live"
+#
+#   3. Start IB Gateway:
+#        docker compose up -d
+#
+#   4. Check it's running (wait ~60s for Gateway to authenticate):
+#        docker compose logs -f
+#        # You should see "IB Gateway started" in the logs
+#
+#   5. Verify port is open:
+#        nc -zv 127.0.0.1 4002     # paper port
+#
+#   6. Test from Python:
+#        python test_ibkr_live.py
+#
+# TRADING MODES & PORTS
+#   paper  → port 4002  (GATEWAY_PAPER_PORT in config.py)
+#   live   → port 4001  (GATEWAY_LIVE_PORT  in config.py)
+#   TWS paper  → port 7497
+#   TWS live   → port 7496
+#
+# SECURITY
+#   Ports are bound to 127.0.0.1 ONLY — not exposed to the public internet.
+#   Your runner script connects via localhost. This is the correct setup.
+#   Never expose IBKR Gateway ports publicly.
+#
+# SESSION MANAGEMENT
+#   IB sessions expire after ~24 hours. The Gateway auto-restarts at
+#   AUTO_RESTART_TIME (set to 11:45 PM ET, before midnight rollover).
+#   This means the runner can reliably connect every day.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  ib-gateway:
+    image: ghcr.io/gnzsnz/ib-gateway:latest
+    restart: unless-stopped
+
+    env_file:
+      - .env.ibkr       # IB_USERNAME, IB_PASSWORD, TRADING_MODE
+
+    environment:
+      # Credentials and mode (override via .env.ibkr)
+      TWS_USERID:    ${IB_USERNAME}
+      TWS_PASSWORD:  ${IB_PASSWORD}
+      TRADING_MODE:  ${TRADING_MODE:-paper}   # paper or live
+
+      # Session auto-restart — IB sessions expire after 24h
+      # Restart just before midnight ET so the session is fresh for the day
+      AUTO_RESTART_TIME:              "11:45 PM"
+      RELOGIN_AFTER_TWOFA_TIMEOUT:    "yes"
+      TWOFA_TIMEOUT_ACTION:           "restart"
+
+      # Gateway settings
+      TWS_SETTINGS_PATH: /home/ibgateway/Jts
+      JAVA_HEAP_SIZE:    512          # MB — reduce if VPS has limited RAM
+
+    ports:
+      # Bind to 127.0.0.1 only — NEVER expose to 0.0.0.0 on a public VPS
+      - "127.0.0.1:4001:4001"   # live gateway
+      - "127.0.0.1:4002:4002"   # paper gateway
+
+    volumes:
+      # Persist Gateway settings and login state across container restarts
+      - ib-gateway-config:/home/ibgateway/Jts
+
+    healthcheck:
+      # Check that the API port is accepting connections
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/4002' 2>/dev/null && echo OK || exit 1"]
+      interval: 60s
+      timeout:  15s
+      retries:  5
+      start_period: 120s   # Gateway needs ~60-90s to authenticate on first start
+
+
+volumes:
+  ib-gateway-config:
+    driver: local
