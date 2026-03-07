@@ -1,6 +1,6 @@
 """
 test_ibkr_live.py  —  Run with: python test_ibkr_live.py
-Full end-to-end test against the paper account (requires TWS on port 7497).
+Full end-to-end test against the paper account (requires IB Gateway on port 4002).
 """
 import sys
 sys.path.insert(0, '.')
@@ -14,7 +14,7 @@ print(SEP)
 print("IBKR PAPER TRADING CONNECTION TEST")
 print(SEP)
 
-with IBKRBroker(paper=True) as broker:
+with IBKRBroker(paper=True, gateway=True) as broker:
 
     # ── 1. Connection ─────────────────────────────────────────────
     print(f"\n[1] Connected: {broker.is_connected}  |  Paper: {broker.is_paper}")
