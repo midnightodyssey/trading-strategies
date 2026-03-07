@@ -12,25 +12,25 @@
 #
 #   2. Create a .env.ibkr file in this directory (NEVER commit this file):
 #        TWS_USERID=your_ibkr_username
-#        TWS_PASSWORD=your_ibkr_password
-#        TWS_TOTP_SECRET=YOURTOTPBASE32SECRET   # from IBKR Secure Login setup
-#        TRADING_MODE=paper        # or "live"
+#        TWS_PASSWORD=your_ibkr_password   ← no $ in password (docker-compose expands $)
+#        TRADING_MODE=paper                ← or "live"
 #
-#      TWS_TOTP_SECRET is the plain-text base32 key shown below the QR code
-#      when you add a TOTP device on the IBKR Secure Login page.
-#      The container auto-generates the 6-digit code so no phone is needed.
+#   3. Create ibc-custom.ini (NEVER commit — contains TOTP secret):
+#        cp ibc-custom.ini.example ibc-custom.ini
+#      Then set IbLoginTotpSecret= to your TOTP base32 key and
+#      IbPassword= to your IBKR password (no $ chars).
 #
-#   3. Start IB Gateway:
+#   4. Start IB Gateway:
 #        docker compose up -d
 #
-#   4. Check it's running (wait ~60s for Gateway to authenticate):
+#   5. Check it's running (wait ~60s for Gateway to authenticate):
 #        docker compose logs -f
 #        # You should see "IB Gateway started" in the logs
 #
-#   5. Verify port is open:
+#   6. Verify port is open:
 #        nc -zv 127.0.0.1 4002     # paper port
 #
-#   6. Test from Python:
+#   7. Test from Python:
 #        python test_ibkr_live.py
 #
 # TRADING MODES & PORTS
@@ -58,7 +58,7 @@ services:
     restart: unless-stopped
 
     # .env.ibkr must contain: TWS_USERID, TWS_PASSWORD, TRADING_MODE
-    # These names match what the container reads directly — no shell substitution needed.
+    # IMPORTANT: passwords must not contain $ (docker-compose expands shell vars).
     env_file:
       - .env.ibkr
 
@@ -69,13 +69,9 @@ services:
       RELOGIN_AFTER_TWOFA_TIMEOUT:    "yes"
       TWOFA_TIMEOUT_ACTION:           "restart"
 
-      # Two-factor authentication — TOTP (Google Authenticator / Authy / etc.)
-      # Requires TWS_TOTP_SECRET in .env.ibkr (the base32 key shown when you
-      # scanned the QR code on the IBKR Secure Login page).
-      # If you didn't save the key, log into IBKR → Security → Secure Login
-      # → remove the existing TOTP device and re-add it, this time copying the
-      # "manual entry key" (the text shown below the QR code).
-      TWOFA_DEVICE:                   "TOTP"
+      # Use custom ibc-custom.ini (has SecondFactorDevice=TOTP + IbLoginTotpSecret)
+      # ibc-custom.ini lives on the VPS only — never commit it (contains TOTP secret)
+      CUSTOM_CONFIG:                  "yes"
 
       # Gateway settings
       TWS_SETTINGS_PATH: /home/ibgateway/Jts
@@ -89,6 +85,8 @@ services:
     volumes:
       # Persist Gateway settings and login state across container restarts
       - ib-gateway-config:/home/ibgateway/Jts
+      # Custom IBC config with TOTP secret — file lives on VPS only, never in git
+      - ./ibc-custom.ini:/home/ibgateway/ibc/config.ini:ro
 
     healthcheck:
       # Check that the API port is accepting connections

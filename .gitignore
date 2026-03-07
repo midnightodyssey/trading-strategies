@@ -210,8 +210,9 @@ __marimo__/
 node_modules/
 dist/
 
-# IB Gateway credentials — NEVER commit this file
+# IB Gateway credentials and TOTP config — NEVER commit these files
 .env.ibkr
+ibc-custom.ini
 
 # Runner logs and local overrides
 logs/
