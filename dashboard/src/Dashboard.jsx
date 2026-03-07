@@ -112,12 +112,15 @@ const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 // ─── MARKDOWN RENDERER ────────────────────────────────────────────────────────
 
 const DOC_CATEGORY_COLOR = {
-  Foundation: "#E8B96A",
-  Framework:  "#6DB8D8",
-  Strategies: "#7DC87A",
-  Risk:       "#E87A7A",
-  Reference:  "#B89FD8",
+  Framework:  "#6DB8D8",   // blue   — core engine (backtest, data, indicators)
+  Strategies: "#7DC87A",   // green  — strategy implementations
+  Risk:       "#E87A7A",   // red    — risk metrics & position sizing
+  Execution:  "#B89FD8",   // purple — OMS, broker, live trading
+  Analysis:   "#E8A86A",   // orange — stat edge, portfolio tools
+  Reference:  "#8896A8",   // grey   — uncategorised
 };
+
+const DOC_CATEGORY_ORDER = ["Framework", "Strategies", "Risk", "Execution", "Analysis", "Reference"];
 
 function MarkdownDoc({ content }) {
   const lines = content.split("\n");
@@ -773,36 +776,59 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Reference Docs */}
-            {docs.length > 0 && (
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                  <SectionLabel>Reference Docs</SectionLabel>
-                  <span style={{ fontSize: 10, color: "#3A4A5A", fontFamily: "monospace" }}>{docs.length} docs · auto-synced from /docs</span>
+            {/* Reference Docs — grouped by category */}
+            {docs.length > 0 && (() => {
+              const grouped = DOC_CATEGORY_ORDER.reduce((acc, cat) => {
+                const catDocs = docs.filter(d => d.category === cat);
+                if (catDocs.length > 0) acc.push({ cat, docs: catDocs });
+                return acc;
+              }, []);
+              return (
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                    <SectionLabel>Reference Docs</SectionLabel>
+                    <span style={{ fontSize: 10, color: "#3A4A5A", fontFamily: "monospace" }}>
+                      {docs.length} docs · {grouped.length} categories · auto-synced
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                    {grouped.map(({ cat, docs: catDocs }) => {
+                      const color = DOC_CATEGORY_COLOR[cat] || "#8896A8";
+                      return (
+                        <div key={cat}>
+                          {/* Category header */}
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                            <div style={{ width: 10, height: 10, borderRadius: "50%", background: color, flexShrink: 0 }} />
+                            <span style={{ fontSize: 11, color: color, fontWeight: 700, letterSpacing: "0.12em",
+                              textTransform: "uppercase" }}>{cat}</span>
+                            <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, ${color}30, transparent)` }} />
+                            <span style={{ fontSize: 10, color: "#3A4A5A" }}>{catDocs.length} doc{catDocs.length > 1 ? "s" : ""}</span>
+                          </div>
+                          {/* Doc cards */}
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
+                            {catDocs.map((doc, i) => (
+                              <div key={i} onClick={() => setSelectedDoc(doc)}
+                                style={{ background: "#080C14", border: `1px solid ${color}25`,
+                                  borderRadius: 10, padding: "12px 14px", cursor: "pointer",
+                                  borderLeft: `3px solid ${color}`,
+                                  transition: "background 0.15s, border-color 0.15s" }}
+                                onMouseEnter={e => { e.currentTarget.style.background = "#0D1625"; e.currentTarget.style.borderColor = color + "70"; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = "#080C14"; e.currentTarget.style.borderColor = color + "25"; }}>
+                                <div style={{ fontSize: 12, color: "#CDD5E0", fontWeight: 600,
+                                  lineHeight: 1.35, marginBottom: 6 }}>{doc.title}</div>
+                                <div style={{ fontSize: 10, color: "#3A4A5A" }}>
+                                  {doc.content.split("\n").filter(l => l.trim()).length} lines · click to read
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
-                  {docs.map((doc, i) => {
-                    const color = DOC_CATEGORY_COLOR[doc.category] || "#B89FD8";
-                    const lines = doc.content.split("\n").filter(l => l.trim()).length;
-                    return (
-                      <div key={i} onClick={() => setSelectedDoc(doc)}
-                        style={{ background: "#0D1321", border: `1px solid ${color}30`,
-                          borderRadius: 10, padding: "14px 16px", cursor: "pointer",
-                          transition: "border-color 0.2s, background 0.2s",
-                          borderLeft: `3px solid ${color}` }}
-                        onMouseEnter={e => { e.currentTarget.style.background = "#111B2E"; e.currentTarget.style.borderColor = color + "80"; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = "#0D1321"; e.currentTarget.style.borderColor = color + "30"; }}>
-                        <div style={{ fontSize: 9, color: color, letterSpacing: "0.12em", textTransform: "uppercase",
-                          fontWeight: 700, marginBottom: 6 }}>{doc.category}</div>
-                        <div style={{ fontSize: 13, color: "#CDD5E0", fontWeight: 600, lineHeight: 1.3,
-                          marginBottom: 8 }}>{doc.title}</div>
-                        <div style={{ fontSize: 10, color: "#3A4A5A" }}>{lines} lines · click to read</div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         )}
 
