@@ -1,0 +1,676 @@
+import { useState, useEffect, useCallback } from "react";
+
+// ─── IMMUTABLE CONSTANTS ──────────────────────────────────────────────────────
+
+const PHASES = [
+  { id: "foundation", label: "Foundation",     icon: "◈", color: "#E8B96A", description: "Market structure, order flow, reading price" },
+  { id: "framework",  label: "Code Framework", icon: "⬡", color: "#6DB8D8", description: "Python library, backtesting engine, indicators" },
+  { id: "strategies", label: "Strategies",     icon: "◉", color: "#7DC87A", description: "Signal models, risk systems & optimisation" },
+  { id: "mastery",    label: "Mastery",         icon: "✦", color: "#B89FD8", description: "Prop firm challenge, live trading & edge refinement", locked: true },
+];
+
+const MODULES = {
+  foundation: [
+    { id: "structure", label: "Market Structure",     color: "#E8B96A", items: ["HH / HL / LH / LL Identification", "CHoCH & BOS Patterns", "Premium / Discount Zones", "Liquidity Pool Mapping"] },
+    { id: "orderflow", label: "Order Flow Analysis",  color: "#E8B96A", items: ["Delta & Cumulative Delta (CVD)", "Footprint Chart Reading", "Volume Imbalances & Stacked Imbalances", "Absorption & Exhaustion Patterns"] },
+    { id: "vwap",      label: "VWAP & Volume Profile", color: "#E8B96A", items: ["Anchored VWAP", "Value Area High / Low / POC", "High & Low Volume Nodes", "VWAP Standard Deviation Bands"] },
+    { id: "psych_f",   label: "Trading Psychology",   color: "#E8B96A", items: ["Probabilistic Mindset (Douglas)", "Emotional Control Framework", "Pre-Trade Routine & Checklist", "Post-Trade Review Process"] },
+  ],
+  framework: [
+    { id: "indicators", label: "Indicators",         color: "#6DB8D8", items: ["SMA", "EMA", "WMA", "RSI", "MACD", "Bollinger Bands", "ATR"] },
+    { id: "backtest",   label: "Backtesting Engine", color: "#6DB8D8", items: ["Vectorised Engine Core", "BacktestResult Class", "Slippage & Commission Model", "Multi-Asset Portfolio", "Walk-Forward Validation"] },
+    { id: "risk",       label: "Risk Models",        color: "#6DB8D8", items: ["Sharpe Ratio", "Sortino Ratio", "Max Drawdown", "Calmar Ratio", "VaR (Parametric)", "CVaR (Expected Shortfall)"] },
+    { id: "data",       label: "Data Pipeline",      color: "#6DB8D8", items: ["Historical Data Acquisition (yfinance / Quandl)", "Real-Time Feed Integration", "Data Cleaning & Normalisation", "Feature Engineering Pipeline"] },
+    { id: "execution",  label: "Execution Layer",    color: "#6DB8D8", items: ["Broker API Integration", "Order Management System", "Live P&L Tracking"] },
+  ],
+  strategies: [
+    { id: "strat_class", label: "Strategy Classes",       color: "#7DC87A", items: ["Base Strategy Class", "SMA Crossover", "Mean Reversion", "Momentum (12/1)", "Breakout / Range Expansion"] },
+    { id: "tech_strat",  label: "Technical Strategies",   color: "#7DC87A", items: ["EMA Trend Following", "RSI Mean Reversion", "MACD Divergence", "Multi-Timeframe Confluence"] },
+    { id: "portfolio",   label: "Portfolio Construction", color: "#7DC87A", items: ["Mean-Variance Optimisation", "Risk Parity", "Kelly Criterion Sizing", "Correlation & Diversification"] },
+    { id: "stat_edge",   label: "Statistical Edge",       color: "#7DC87A", items: ["Hypothesis Testing (T-Test, Permutation)", "Monte Carlo Simulation", "Market Regime Detection", "Factor Analysis"] },
+  ],
+  mastery: [
+    { id: "live_exec",  label: "Prop Firm & Live",     color: "#B89FD8", items: ["Paper Trading — 30 Days (prop firm rules)", "Pass Challenge Phase", "Pass Verification Phase", "Funded Live Execution", "Real-Time Risk Monitoring"] },
+    { id: "adv_models", label: "Advanced Models",      color: "#B89FD8", items: ["ML Signal Generation", "NLP Sentiment Analysis", "Options Pricing Models", "High-Frequency Considerations"] },
+    { id: "edge",       label: "Edge Refinement",      color: "#B89FD8", items: ["Strategy Decay Detection", "Market Regime Adaptation", "Continuous Improvement Loop"] },
+    { id: "pro",        label: "Professional Practice", color: "#B89FD8", items: ["Regulatory & Compliance Basics", "Fund Structure Understanding", "Performance Attribution", "Investor Reporting"] },
+  ],
+};
+
+// base = institutional starting level (1–10); modules = which completions drive the bar
+const SKILL_MODULE_MAP = [
+  { name: "Technical Analysis",    color: "#E8B96A", base: 3, modules: ["structure", "orderflow", "vwap", "tech_strat"] },
+  { name: "Quantitative & Coding", color: "#6DB8D8", base: 5, modules: ["indicators", "backtest", "data", "strat_class", "stat_edge"] },
+  { name: "Risk Management",       color: "#7DC87A", base: 7, modules: ["risk", "portfolio"] },
+  { name: "Trading Psychology",    color: "#E87A7A", base: 2, modules: ["psych_f"] },
+  { name: "Market Knowledge",      color: "#B89FD8", base: 6, modules: ["structure", "orderflow", "vwap", "tech_strat", "portfolio"] },
+  { name: "Execution & Process",   color: "#E8A86A", base: 4, modules: ["execution", "live_exec"] },
+];
+
+const ALL_MODULES = Object.values(MODULES).flat();
+
+function computeSkillLevel(skill, completions) {
+  const mods  = ALL_MODULES.filter(m => skill.modules.includes(m.id));
+  const total = mods.reduce((s, m) => s + m.items.length, 0);
+  const done  = mods.reduce((s, m) => s + (completions[m.id] || []).filter(Boolean).length, 0);
+  const pct   = total > 0 ? done / total : 0;
+  return Math.max(1, Math.round(skill.base + pct * (10 - skill.base)));
+}
+
+const BOOK_DEFS = [
+  { title: "Market Wizards",                              author: "Jack Schwager",          category: "Psychology" },
+  { title: "Trading in the Zone",                         author: "Mark Douglas",           category: "Psychology" },
+  { title: "Reminiscences of a Stock Operator",           author: "Edwin Lefèvre",          category: "Psychology" },
+  { title: "Technical Analysis of the Financial Markets", author: "John J. Murphy",         category: "Technical"  },
+  { title: "Algorithmic Trading",                         author: "Ernest Chan",            category: "Quant"      },
+  { title: "Advances in Financial Machine Learning",      author: "Marcos Lopez de Prado",  category: "Quant"      },
+  { title: "Quantitative Trading",                        author: "Ernest Chan",            category: "Quant"      },
+  { title: "The Man Who Solved the Market",               author: "Gregory Zuckerman",      category: "Psychology" },
+  { title: "Evidence-Based Technical Analysis",           author: "David Aronson",          category: "Technical"  },
+  { title: "Options, Futures & Other Derivatives",        author: "John C. Hull",           category: "Technical"  },
+];
+
+const VIDEO_CAT_DEFS = [
+  { label: "Order Flow & Price Action", color: "#E8B96A" },
+  { label: "Quant / Systematic",        color: "#6DB8D8" },
+  { label: "Risk & Portfolio",          color: "#7DC87A" },
+  { label: "Market Microstructure",     color: "#B89FD8" },
+  { label: "Psychology & Process",      color: "#E8876A" },
+];
+
+const TARGET_DEFS = [
+  { metric: "Sharpe Ratio",      target: 1.5,  unit: "",    higher: true  },
+  { metric: "Max Drawdown",      target: 10,   unit: "%",   higher: false },
+  { metric: "Win Rate",          target: 55,   unit: "%",   higher: true  },
+  { metric: "Avg Risk / Reward", target: 2.0,  unit: "x",   higher: true  },
+  { metric: "Backtest History",  target: 10,   unit: " yr", higher: true  },
+];
+
+const MILESTONE_DEFS = [
+  { label: "Indicators Library Complete",            color: "#7DC87A" },
+  { label: "Risk Model Suite Complete",              color: "#7DC87A" },
+  { label: "Backtesting Engine v1",                  color: "#6DB8D8" },
+  { label: "First Strategy Backtest (10-yr data)",   color: "#6DB8D8" },
+  { label: "Paper Trading — 30-Day Structured Trial", color: "#E8B96A" },
+  { label: "Pass Prop Firm Challenge Phase",         color: "#B89FD8" },
+  { label: "Pass Prop Firm Verification",            color: "#B89FD8" },
+  { label: "First Funded Payout",                    color: "#B89FD8" },
+];
+
+const NEXT_ACTIONS = [
+  { priority: "HIGH", text: "Build walk-forward validation — your risk/stats background makes this achievable now" },
+  { priority: "HIGH", text: "Codify your institutional edge: translate put-spread hedging logic into a systematic options screener" },
+  { priority: "HIGH", text: "Paper trade with prop firm rules (1% risk/trade, 4% daily DD, 10% max DD) — apply the same discipline you used on the PM desk" },
+  { priority: "MED",  text: "Read Trading in the Zone ch. 4–8 — psychology is your lowest-rated skill and the hardest to develop" },
+  { priority: "MED",  text: "Implement Greeks (Delta, Gamma, Vega, Theta) in Python — you know the theory, now automate it" },
+  { priority: "MED",  text: "Research prop firm evaluations that suit systematic/quant traders (FTMO, Topstep, Apex Trader)" },
+  { priority: "LOW",  text: "Build a market regime detector — leverage your multi-asset PM exposure to identify trend vs. mean-reversion environments" },
+];
+
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+// ─── DEFAULT STATE ────────────────────────────────────────────────────────────
+
+const DEFAULT_STATE = {
+  completions: {
+    // ── Post-quiz calibration (Mar 2026) ──────────────────────────────────
+    // All items reflect actual tested knowledge — institutional background
+    // provides context and accelerates learning, but does not substitute
+    // for systematic study of each framework item below.
+    structure:   [false, false, false, false],   // Q1–Q4: HH/HL, CHoCH/BOS, Premium/Discount, Liquidity Pools — all incomplete
+    orderflow:   [false, false, false, false],   // Q5–Q8: CVD, Footprint, Imbalances, Absorption — all incomplete
+    vwap:        [false, false, false, false],   // Q9–Q12: Anchored VWAP, VAH/VAL/POC, Nodes, SD Bands — all incomplete
+    psych_f:     [false, false, false, false],   // Q13–Q16: Douglas mindset, Emotional control, Routine, Review — all incomplete
+    indicators:  [false, false, false, false, false, false, false],  // Q17–Q23: SMA/EMA/WMA/RSI/MACD/BB/ATR — all incomplete
+    backtest:    [false, false, false, false, false],  // Q24–Q28: Engine, Result class, Slippage, Multi-asset, Walk-forward — incomplete
+    risk:        [false, false, false, false, false, false],   // Q29–Q34: Sharpe/Sortino/MDD/Calmar/VaR/CVaR — all incomplete
+    data:        [false, false, false, false],   // Q35–Q38: Acquisition, Real-time, Cleaning, Feature engineering — incomplete
+    execution:   [false, false, false],          // Q39–Q41: Broker API, OMS, Live P&L — all incomplete
+    strat_class: [false, false, false, false, false],  // Q42–Q46: Base class, SMA cross, Mean rev, Momentum, Breakout — incomplete
+    tech_strat:  [false, false, false, false],   // Q47–Q50: EMA trend, RSI MR, MACD div, MTF confluence — incomplete
+    portfolio:   [false, false, false, false],   // Q51–Q54: MVO, Risk Parity, Kelly, Correlation — incomplete
+    stat_edge:   [false, false, false, false],   // Q55–Q58: Hypothesis test, Monte Carlo, Regime, Factor analysis — incomplete
+    // Mastery — not started
+    live_exec:   [false, false, false, false, false],
+    adv_models:  [false, false, false, false],
+    edge:        [false, false, false],
+    pro:         [false, false, false, false],
+  },
+  skills: {
+    // Recalibrated: 3yr institutional background (options desk, multi-asset PM, equities financing)
+    "Technical Analysis":    5,   // Research desk exposure; not systematic TA, but not a beginner
+    "Quantitative & Coding": 6,   // Intermediate Python — correct
+    "Risk Management":       8,   // Ran hedge book & exposure mgmt for pension fund clients
+    "Trading Psychology":    2,   // Self-rated weakest — correct
+    "Market Knowledge":      8,   // Multi-asset: equities, options, FX, futures, credit, equities financing
+    "Execution & Process":   5,   // Supported real institutional execution; understands OMS/process
+  },
+  books: {
+    "Market Wizards":                              "reading",
+    "Trading in the Zone":                         "reading",
+    "Reminiscences of a Stock Operator":           "unread",
+    "Technical Analysis of the Financial Markets": "unread",
+    "Algorithmic Trading":                         "read",
+    "Advances in Financial Machine Learning":      "reading",
+    "Quantitative Trading":                        "read",
+    "The Man Who Solved the Market":               "unread",
+    "Evidence-Based Technical Analysis":           "unread",
+    "Options, Futures & Other Derivatives":        "read",   // Worked with put spreads on options desk
+  },
+  activity:   { Mon: 3, Tue: 7, Wed: 5, Thu: 9, Fri: 4, Sat: 8, Sun: 6 },
+  targets:    { "Sharpe Ratio": 0.8, "Max Drawdown": 22, "Win Rate": 48, "Avg Risk / Reward": 1.4, "Backtest History": 3 },
+  videos:     { "Order Flow & Price Action": 8, "Quant / Systematic": 7, "Risk & Portfolio": 5, "Market Microstructure": 4, "Psychology & Process": 3 },
+  milestones: [true, true, false, false, false, false, false, false],
+};
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem("trading-career-v4");
+    if (!raw) return DEFAULT_STATE;
+    const saved = JSON.parse(raw);
+    return {
+      ...DEFAULT_STATE,
+      ...saved,
+      completions: { ...DEFAULT_STATE.completions, ...saved.completions },
+      skills:      { ...DEFAULT_STATE.skills,      ...saved.skills      },
+      books:       { ...DEFAULT_STATE.books,        ...saved.books       },
+      activity:    { ...DEFAULT_STATE.activity,     ...saved.activity    },
+      targets:     { ...DEFAULT_STATE.targets,      ...saved.targets     },
+      videos:      { ...DEFAULT_STATE.videos,        ...saved.videos      },
+    };
+  } catch { return DEFAULT_STATE; }
+}
+
+// ─── SMALL COMPONENTS ─────────────────────────────────────────────────────────
+
+function Ring({ pct, color, size = 52, stroke = 4 }) {
+  const r    = (size - stroke * 2) / 2;
+  const circ = 2 * Math.PI * r;
+  const dash = (pct / 100) * circ;
+  return (
+    <svg width={size} height={size} style={{ transform: "rotate(-90deg)", display: "block" }}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#252D3D" strokeWidth={stroke} />
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
+        strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
+        style={{ transition: "stroke-dasharray 1.2s ease" }} />
+    </svg>
+  );
+}
+
+function PhaseCard({ phase, active, progress, onClick }) {
+  return (
+    <div onClick={!phase.locked ? onClick : undefined} style={{
+      background: active ? "#1A2235" : "#111827",
+      border: `2px solid ${active ? phase.color : phase.locked ? "#1E2535" : "#2A3347"}`,
+      borderRadius: 12, padding: "14px 16px",
+      display: "flex", alignItems: "center", gap: 12,
+      opacity: phase.locked ? 0.4 : 1,
+      cursor: phase.locked ? "default" : "pointer",
+      transition: "all 0.25s", position: "relative", overflow: "hidden",
+    }}>
+      {active && !phase.locked && (
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2,
+          background: `linear-gradient(90deg, transparent, ${phase.color}, transparent)` }} />
+      )}
+      <div style={{ position: "relative", flexShrink: 0 }}>
+        <Ring pct={progress} color={phase.color} size={48} stroke={4} />
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center",
+          justifyContent: "center", fontSize: 14, color: phase.color }}>{phase.icon}</div>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+          <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 15, color: "#F0F2F8", fontWeight: 600 }}>{phase.label}</span>
+          <span style={{ fontSize: 12, color: phase.color, fontFamily: "monospace", fontWeight: 700 }}>{progress}%</span>
+        </div>
+        <div style={{ fontSize: 11, color: "#8896A8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{phase.description}</div>
+      </div>
+    </div>
+  );
+}
+
+function ModuleBar({ mod, completions, onToggle }) {
+  const done  = completions.filter(Boolean).length;
+  const total = mod.items.length;
+  const pct   = total ? Math.round((done / total) * 100) : 0;
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div onClick={() => setOpen(o => !o)} style={{
+        background: "#0F1520", border: `1px solid ${open ? mod.color + "60" : "#252D3D"}`,
+        borderRadius: open ? "8px 8px 0 0" : 8, padding: "12px 14px",
+        cursor: "pointer", transition: "border-color 0.2s",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 7 }}>
+              <span style={{ fontSize: 13, color: "#CDD5E0", fontWeight: 600 }}>{mod.label}</span>
+              <span style={{ fontSize: 12, color: mod.color, fontFamily: "monospace", fontWeight: 700 }}>{done}/{total}</span>
+            </div>
+            <div style={{ height: 5, background: "#252D3D", borderRadius: 4, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${pct}%`, background: mod.color,
+                borderRadius: 4, transition: "width 0.5s ease", boxShadow: `0 0 6px ${mod.color}80` }} />
+            </div>
+          </div>
+          <span style={{ fontSize: 10, color: "#4A5568", transform: open ? "rotate(180deg)" : "none",
+            transition: "transform 0.2s", marginLeft: 4 }}>▼</span>
+        </div>
+      </div>
+      {open && (
+        <div style={{ padding: "8px 14px 10px", background: "#080C14",
+          border: `1px solid ${mod.color}60`, borderTop: "none", borderRadius: "0 0 8px 8px" }}>
+          {mod.items.map((item, i) => (
+            <div key={i} onClick={e => { e.stopPropagation(); onToggle(i); }}
+              style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 4px",
+                cursor: "pointer", borderRadius: 5, transition: "background 0.1s" }}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+              <div style={{ width: 15, height: 15, borderRadius: 3, flexShrink: 0,
+                border: `1.5px solid ${completions[i] ? mod.color : "#3A4A5A"}`,
+                background: completions[i] ? mod.color + "33" : "transparent",
+                display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s" }}>
+                {completions[i] && <span style={{ fontSize: 8, color: mod.color, fontWeight: 700 }}>✓</span>}
+              </div>
+              <span style={{ fontSize: 12, color: completions[i] ? mod.color : "#5A6A7A",
+                transition: "color 0.15s" }}>{item}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SkillRow({ skill, level, base, mounted }) {
+  const earned = level - base;
+  return (
+    <div style={{ marginBottom: 11 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+        <span style={{ fontSize: 12, color: "#A0AABA", fontWeight: 500 }}>{skill.name}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {earned > 0 && (
+            <span style={{ fontSize: 9, color: "#4A6A4A", fontFamily: "monospace" }}>+{earned}</span>
+          )}
+          <span style={{ fontSize: 12, color: skill.color, fontFamily: "monospace", fontWeight: 700 }}>{level}/10</span>
+        </div>
+      </div>
+      <div style={{ height: 5, background: "#1E2535", borderRadius: 4, overflow: "hidden", position: "relative" }}>
+        {/* base level marker */}
+        <div style={{ position: "absolute", top: 0, bottom: 0, left: 0,
+          width: `${base * 10}%`, background: skill.color + "40", borderRadius: 4 }} />
+        {/* earned from completions */}
+        <div style={{ height: "100%", borderRadius: 4,
+          width: mounted ? `${level * 10}%` : `${base * 10}%`,
+          background: skill.color, transition: "width 0.6s ease",
+          boxShadow: `0 0 6px ${skill.color}60` }} />
+      </div>
+    </div>
+  );
+}
+
+const SectionLabel = ({ children }) => (
+  <div style={{ fontSize: 10, letterSpacing: "0.2em", color: "#5A6A80", textTransform: "uppercase",
+    marginBottom: 12, fontWeight: 600 }}>{children}</div>
+);
+
+const Hint = ({ children }) => (
+  <div style={{ fontSize: 9, color: "#2A3A4A", letterSpacing: "0.08em", marginBottom: 10 }}>{children}</div>
+);
+
+const MiniBtn = ({ onClick, children }) => (
+  <button onClick={onClick} style={{
+    width: 16, height: 16, borderRadius: 3, border: "1px solid #2A3A4A",
+    background: "transparent", color: "#5A6A7A", fontSize: 11, cursor: "pointer",
+    display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1,
+  }}>{children}</button>
+);
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+
+export default function Dashboard() {
+  const [activePhase, setActivePhase]       = useState("framework");
+  const [mounted, setMounted]               = useState(false);
+  const [state, setState]                   = useState(loadState);
+  const [editTarget, setEditTarget]         = useState(null);
+  const [editTargetVal, setEditTargetVal]   = useState("");
+
+  useEffect(() => { setTimeout(() => setMounted(true), 100); }, []);
+  useEffect(() => { localStorage.setItem("trading-career-v4", JSON.stringify(state)); }, [state]);
+
+  // ── computed ──────────────────────────────────────────────────────────────
+  const calcProgress = useCallback((phaseId) => {
+    const mods = MODULES[phaseId] || [];
+    if (!mods.length) return 0;
+    const sum = mods.reduce((acc, mod) => {
+      const c = state.completions[mod.id] || [];
+      return acc + c.filter(Boolean).length / mod.items.length;
+    }, 0);
+    return Math.round((sum / mods.length) * 100);
+  }, [state.completions]);
+
+  const overallPct = Math.round(
+    PHASES.filter(p => !p.locked).reduce((s, p) => s + calcProgress(p.id), 0) /
+    PHASES.filter(p => !p.locked).length
+  );
+
+  // ── state updaters ────────────────────────────────────────────────────────
+  const toggleItem = useCallback((modId, idx) => {
+    setState(s => {
+      const arr = [...(s.completions[modId] || [])];
+      arr[idx] = !arr[idx];
+      return { ...s, completions: { ...s.completions, [modId]: arr } };
+    });
+  }, []);
+
+
+  const cycleBook = useCallback((title) => {
+    const next = { unread: "reading", reading: "read", read: "unread" };
+    setState(s => ({ ...s, books: { ...s.books, [title]: next[s.books[title] || "unread"] } }));
+  }, []);
+
+  const adjustActivity = useCallback((day, delta) => {
+    setState(s => ({ ...s, activity: { ...s.activity, [day]: Math.min(10, Math.max(0, (s.activity[day] || 0) + delta)) } }));
+  }, []);
+
+  const adjustVideo = useCallback((label, delta) => {
+    setState(s => ({ ...s, videos: { ...s.videos, [label]: Math.max(0, (s.videos[label] || 0) + delta) } }));
+  }, []);
+
+  const toggleMilestone = useCallback((i) => {
+    setState(s => {
+      const m = [...(s.milestones || DEFAULT_STATE.milestones)];
+      m[i] = !m[i];
+      return { ...s, milestones: m };
+    });
+  }, []);
+
+  const commitTarget = useCallback((metric) => {
+    const val = parseFloat(editTargetVal);
+    if (!isNaN(val)) setState(s => ({ ...s, targets: { ...s.targets, [metric]: val } }));
+    setEditTarget(null);
+    setEditTargetVal("");
+  }, [editTargetVal]);
+
+  // ── derived values ────────────────────────────────────────────────────────
+  const filteredMods    = MODULES[activePhase] || [];
+  const activePhaseData = PHASES.find(p => p.id === activePhase);
+  const booksRead       = BOOK_DEFS.filter(b => state.books[b.title] === "read").length;
+  const booksReading    = BOOK_DEFS.filter(b => state.books[b.title] === "reading").length;
+  const totalVideos     = VIDEO_CAT_DEFS.reduce((s, c) => s + (state.videos[c.label] || 0), 0);
+  const maxVideo        = Math.max(...VIDEO_CAT_DEFS.map(c => state.videos[c.label] || 0), 1);
+  const maxActivity     = Math.max(...DAYS.map(d => state.activity[d] || 0), 1);
+  const milestones      = state.milestones || DEFAULT_STATE.milestones;
+  const priorityColor   = { HIGH: "#E87A7A", MED: "#E8B96A", LOW: "#4A5A70" };
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#080C14", fontFamily: "'Inter', sans-serif", color: "#8896A8" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Inter:wght@400;500;600&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #080C14; }
+        ::-webkit-scrollbar-thumb { background: #252D3D; border-radius: 4px; }
+        button { transition: opacity 0.15s; } button:hover { opacity: 0.7; }
+      `}</style>
+
+      {/* ── HEADER ── */}
+      <div style={{ borderBottom: "1px solid #1E2535", padding: "20px 28px 18px" }}>
+        <div style={{ maxWidth: 980, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontSize: 11, letterSpacing: "0.15em", color: "#5A6A80", textTransform: "uppercase", marginBottom: 5, fontWeight: 600 }}>
+              Harrison Seaborn · Goal: Prop Firm Funded Trader
+            </div>
+            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, color: "#F0F2F8", fontWeight: 600 }}>
+              Career Progression Dashboard
+            </h1>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 11, color: "#5A6A80", marginBottom: 3, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 600 }}>Overall Progress</div>
+            <div style={{ fontFamily: "monospace", fontSize: 34, color: "#E8B96A", lineHeight: 1, fontWeight: 700 }}>
+              {overallPct}<span style={{ fontSize: 16 }}>%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 980, margin: "0 auto", padding: "24px 28px" }}>
+
+        {/* ── PHASES ── */}
+        <div style={{ marginBottom: 26 }}>
+          <SectionLabel>Learning Phases — click to explore</SectionLabel>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+            {PHASES.map(p => (
+              <PhaseCard key={p.id} phase={p} active={activePhase === p.id}
+                progress={calcProgress(p.id)} onClick={() => setActivePhase(p.id)} />
+            ))}
+          </div>
+        </div>
+
+        {/* ── ROW 1: Modules | Skills + Actions ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 18, marginBottom: 18 }}>
+
+          {/* Modules */}
+          <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "18px 16px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <SectionLabel>{activePhaseData?.label} · Modules</SectionLabel>
+              <div style={{ fontSize: 12, color: activePhaseData?.color, fontWeight: 700 }}>
+                {filteredMods.reduce((s, m) => s + (state.completions[m.id] || []).filter(Boolean).length, 0)} /
+                {filteredMods.reduce((s, m) => s + m.items.length, 0)} complete
+              </div>
+            </div>
+            <Hint>EXPAND A MODULE · CLICK ITEMS TO MARK COMPLETE</Hint>
+            {filteredMods.map(m => (
+              <ModuleBar key={m.id} mod={m}
+                completions={state.completions[m.id] || m.items.map(() => false)}
+                onToggle={idx => toggleItem(m.id, idx)} />
+            ))}
+          </div>
+
+          {/* Skills + Priority Actions */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+            <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "18px 16px" }}>
+              <SectionLabel>Skill Proficiency</SectionLabel>
+              <Hint>DERIVED FROM MODULE COMPLETION · BASE FROM INSTITUTIONAL BACKGROUND</Hint>
+              {SKILL_MODULE_MAP.map(skill => (
+                <SkillRow key={skill.name} skill={skill}
+                  level={computeSkillLevel(skill, state.completions)}
+                  base={skill.base} mounted={mounted} />
+              ))}
+            </div>
+
+            <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "18px 16px", flex: 1 }}>
+              <SectionLabel>Priority Actions</SectionLabel>
+              {NEXT_ACTIONS.map((action, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 7,
+                  padding: "7px 10px", background: "#080C14", borderRadius: 7,
+                  borderLeft: `2px solid ${priorityColor[action.priority]}` }}>
+                  <span style={{ fontSize: 8, fontWeight: 700, color: priorityColor[action.priority],
+                    letterSpacing: "0.08em", paddingTop: 2, minWidth: 26 }}>{action.priority}</span>
+                  <span style={{ fontSize: 11, color: "#8896A8", lineHeight: 1.4 }}>{action.text}</span>
+                </div>
+              ))}
+            </div>
+
+          </div>
+        </div>
+
+        {/* ── ROW 2: Books | Strategy Targets + Videos ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, marginBottom: 18 }}>
+
+          {/* Essential Reading */}
+          <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "18px 16px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <SectionLabel>Essential Reading</SectionLabel>
+              <div style={{ display: "flex", gap: 10, fontSize: 10 }}>
+                <span style={{ color: "#7DC87A" }}>● {booksRead} read</span>
+                <span style={{ color: "#E8B96A" }}>● {booksReading} reading</span>
+                <span style={{ color: "#3A4A5A" }}>● {BOOK_DEFS.length - booksRead - booksReading} queued</span>
+              </div>
+            </div>
+            <Hint>CLICK DOT TO CYCLE: QUEUED → READING → READ</Hint>
+            {BOOK_DEFS.map((book, i) => {
+              const status   = state.books[book.title] || "unread";
+              const dotColor = status === "read" ? "#7DC87A" : status === "reading" ? "#E8B96A" : "#252D3D";
+              return (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0",
+                  borderBottom: i < BOOK_DEFS.length - 1 ? "1px solid #131B28" : "none" }}>
+                  <div onClick={() => cycleBook(book.title)} style={{ width: 8, height: 8, borderRadius: "50%",
+                    flexShrink: 0, background: dotColor, cursor: "pointer", transition: "background 0.2s",
+                    border: status === "unread" ? "1px solid #3A4A5A" : "none" }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: 11, color: status === "read" ? "#5A7A5A" : "#A0AABA" }}>{book.title}</span>
+                    <span style={{ fontSize: 10, color: "#3A4A5A", marginLeft: 6 }}>{book.author}</span>
+                  </div>
+                  <span style={{ fontSize: 9, color: "#3A4A5A", background: "#131B28",
+                    padding: "2px 6px", borderRadius: 4, flexShrink: 0 }}>{book.category}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Strategy Targets + Video Library */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+            <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "18px 16px" }}>
+              <SectionLabel>Strategy Performance Targets</SectionLabel>
+              <Hint>CLICK CURRENT VALUE TO EDIT</Hint>
+              {TARGET_DEFS.map(item => {
+                const current  = state.targets[item.metric] ?? 0;
+                const progress = item.higher
+                  ? Math.min(100, (current / item.target) * 100)
+                  : current === 0 ? 0 : Math.min(100, (item.target / current) * 100);
+                const met        = item.higher ? current >= item.target : current <= item.target;
+                const isEditing  = editTarget === item.metric;
+                return (
+                  <div key={item.metric} style={{ marginBottom: 11 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                      <span style={{ fontSize: 12, color: "#8896A8" }}>{item.metric}</span>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        {isEditing ? (
+                          <input autoFocus value={editTargetVal}
+                            onChange={e => setEditTargetVal(e.target.value)}
+                            onBlur={() => commitTarget(item.metric)}
+                            onKeyDown={e => e.key === "Enter" && commitTarget(item.metric)}
+                            style={{ width: 54, background: "#131B28",
+                              border: `1px solid ${met ? "#7DC87A" : "#E87A7A"}`,
+                              borderRadius: 4, color: met ? "#7DC87A" : "#E87A7A",
+                              fontFamily: "monospace", fontSize: 12, fontWeight: 700,
+                              padding: "1px 4px", outline: "none", textAlign: "right" }} />
+                        ) : (
+                          <span onClick={() => { setEditTarget(item.metric); setEditTargetVal(String(current)); }}
+                            style={{ fontSize: 12, color: met ? "#7DC87A" : "#E87A7A", fontFamily: "monospace",
+                              fontWeight: 700, cursor: "pointer",
+                              borderBottom: "1px dashed", borderColor: "currentColor" }}>
+                            {current}{item.unit}
+                          </span>
+                        )}
+                        <span style={{ fontSize: 10, color: "#3A4A5A" }}>→ {item.target}{item.unit}</span>
+                      </div>
+                    </div>
+                    <div style={{ height: 4, background: "#1E2535", borderRadius: 4, overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: mounted ? `${progress}%` : "0%",
+                        background: met ? "#7DC87A" : "linear-gradient(90deg, #E87A7A, #E8B96A)",
+                        borderRadius: 4, transition: "width 0.5s ease",
+                        boxShadow: met ? "0 0 6px #7DC87A60" : "none" }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "18px 16px", flex: 1 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <SectionLabel>Video Library</SectionLabel>
+                <div style={{ fontSize: 12, color: "#E8B96A", fontFamily: "monospace", fontWeight: 700 }}>{totalVideos} saved</div>
+              </div>
+              <Hint>USE + / − TO UPDATE COUNTS</Hint>
+              {VIDEO_CAT_DEFS.map(cat => {
+                const count = state.videos[cat.label] || 0;
+                return (
+                  <div key={cat.label} style={{ marginBottom: 9 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                      <span style={{ fontSize: 11, color: "#A0AABA" }}>{cat.label}</span>
+                      <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                        <MiniBtn onClick={() => adjustVideo(cat.label, -1)}>−</MiniBtn>
+                        <span style={{ fontSize: 11, color: cat.color, fontFamily: "monospace",
+                          fontWeight: 700, minWidth: 18, textAlign: "center" }}>{count}</span>
+                        <MiniBtn onClick={() => adjustVideo(cat.label, 1)}>+</MiniBtn>
+                      </div>
+                    </div>
+                    <div style={{ height: 4, background: "#1E2535", borderRadius: 4, overflow: "hidden" }}>
+                      <div style={{ height: "100%", borderRadius: 4,
+                        width: mounted ? `${(count / maxVideo) * 100}%` : "0%",
+                        background: cat.color, transition: "width 0.4s ease",
+                        boxShadow: `0 0 6px ${cat.color}60` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+          </div>
+        </div>
+
+        {/* ── ROW 3: Activity | Milestones ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+
+          <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "18px 16px" }}>
+            <SectionLabel>Weekly Activity</SectionLabel>
+            <Hint>CLICK BAR +1 · RIGHT-CLICK −1</Hint>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 64 }}>
+              {DAYS.map(day => {
+                const val  = state.activity[day] || 0;
+                const peak = val === maxActivity && val > 0;
+                return (
+                  <div key={day} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}
+                    onContextMenu={e => { e.preventDefault(); adjustActivity(day, -1); }}>
+                    <div onClick={() => adjustActivity(day, 1)}
+                      title={`${val} sessions — click +1, right-click −1`}
+                      style={{ width: "100%", borderRadius: 3,
+                        height: `${(val / 10) * 50}px`, minHeight: 3,
+                        background: peak ? "#E8B96A" : "#1E2A3D",
+                        boxShadow: peak ? "0 0 10px #E8B96A60" : "none",
+                        transition: "height 0.3s ease, background 0.3s ease",
+                        cursor: "pointer", alignSelf: "flex-end" }} />
+                    <span style={{ fontSize: 9, color: "#4A5A70", fontWeight: 600, letterSpacing: "0.05em" }}>{day}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "18px 16px" }}>
+            <SectionLabel>Career Milestones</SectionLabel>
+            <Hint>CLICK TO TOGGLE COMPLETE</Hint>
+            {MILESTONE_DEFS.map((m, i) => {
+              const done = milestones[i];
+              return (
+                <div key={i} onClick={() => toggleMilestone(i)}
+                  style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10,
+                    cursor: "pointer", borderRadius: 6, padding: "2px 4px", transition: "background 0.1s" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                  <div style={{ width: 16, height: 16, borderRadius: "50%", flexShrink: 0,
+                    border: `1.5px solid ${done ? m.color : "#2A3A4A"}`,
+                    background: done ? m.color + "33" : "transparent",
+                    display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
+                    {done && <span style={{ fontSize: 8, color: m.color }}>✓</span>}
+                  </div>
+                  <span style={{ fontSize: 12, lineHeight: 1.3,
+                    color: done ? "#5A7A5A" : "#6A7A8A",
+                    textDecoration: done ? "line-through" : "none",
+                    transition: "all 0.2s" }}>{m.label}</span>
+                </div>
+              );
+            })}
+          </div>
+
+        </div>
+
+        <div style={{ marginTop: 24, textAlign: "center", fontSize: 10, color: "#1E2535", letterSpacing: "0.15em", fontWeight: 600 }}>
+          MIDNIGHTODYSSEY · QUANT FRAMEWORK v0.1 · CAREER PROGRESSION TRACKER
+        </div>
+      </div>
+    </div>
+  );
+}
