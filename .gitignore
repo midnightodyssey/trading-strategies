@@ -216,3 +216,6 @@ dist/
 # Runner logs and local overrides
 logs/
 *.log
+
+# Claude Code worktrees (temporary isolated branches — not source code)
+.claude/worktrees/

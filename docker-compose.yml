@@ -11,9 +11,14 @@
 #        sudo apt install docker-compose-plugin
 #
 #   2. Create a .env.ibkr file in this directory (NEVER commit this file):
-#        IB_USERNAME=your_ibkr_username
-#        IB_PASSWORD=your_ibkr_password
+#        TWS_USERID=your_ibkr_username
+#        TWS_PASSWORD=your_ibkr_password
+#        TWS_TOTP_SECRET=YOURTOTPBASE32SECRET   # from IBKR Secure Login setup
 #        TRADING_MODE=paper        # or "live"
+#
+#      TWS_TOTP_SECRET is the plain-text base32 key shown below the QR code
+#      when you add a TOTP device on the IBKR Secure Login page.
+#      The container auto-generates the 6-digit code so no phone is needed.
 #
 #   3. Start IB Gateway:
 #        docker compose up -d
@@ -52,20 +57,25 @@ services:
     image: ghcr.io/gnzsnz/ib-gateway:latest
     restart: unless-stopped
 
+    # .env.ibkr must contain: TWS_USERID, TWS_PASSWORD, TRADING_MODE
+    # These names match what the container reads directly — no shell substitution needed.
     env_file:
-      - .env.ibkr       # IB_USERNAME, IB_PASSWORD, TRADING_MODE
+      - .env.ibkr
 
     environment:
-      # Credentials and mode (override via .env.ibkr)
-      TWS_USERID:    ${IB_USERNAME}
-      TWS_PASSWORD:  ${IB_PASSWORD}
-      TRADING_MODE:  ${TRADING_MODE:-paper}   # paper or live
-
       # Session auto-restart — IB sessions expire after 24h
       # Restart just before midnight ET so the session is fresh for the day
       AUTO_RESTART_TIME:              "11:45 PM"
       RELOGIN_AFTER_TWOFA_TIMEOUT:    "yes"
       TWOFA_TIMEOUT_ACTION:           "restart"
+
+      # Two-factor authentication — TOTP (Google Authenticator / Authy / etc.)
+      # Requires TWS_TOTP_SECRET in .env.ibkr (the base32 key shown when you
+      # scanned the QR code on the IBKR Secure Login page).
+      # If you didn't save the key, log into IBKR → Security → Secure Login
+      # → remove the existing TOTP device and re-add it, this time copying the
+      # "manual entry key" (the text shown below the QR code).
+      TWOFA_DEVICE:                   "TOTP"
 
       # Gateway settings
       TWS_SETTINGS_PATH: /home/ibgateway/Jts
