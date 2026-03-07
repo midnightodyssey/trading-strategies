@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 // ─── IMMUTABLE CONSTANTS ──────────────────────────────────────────────────────
 
@@ -108,6 +108,118 @@ const NEXT_ACTIONS = [
 ];
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+// ─── MARKDOWN RENDERER ────────────────────────────────────────────────────────
+
+const DOC_CATEGORY_COLOR = {
+  Foundation: "#E8B96A",
+  Framework:  "#6DB8D8",
+  Strategies: "#7DC87A",
+  Risk:       "#E87A7A",
+  Reference:  "#B89FD8",
+};
+
+function MarkdownDoc({ content }) {
+  const lines = content.split("\n");
+  const els = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    // fenced code block
+    if (line.startsWith("```")) {
+      const lang = line.slice(3).trim();
+      const codeLines = [];
+      i++;
+      while (i < lines.length && !lines[i].startsWith("```")) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      els.push(
+        <pre key={i} style={{ background: "#060A12", border: "1px solid #1E2535", borderRadius: 6,
+          padding: "10px 14px", margin: "8px 0 14px", overflowX: "auto",
+          fontFamily: "monospace", fontSize: 11, color: "#7DC87A", lineHeight: 1.6 }}>
+          {lang && <div style={{ fontSize: 9, color: "#3A4A5A", letterSpacing: "0.12em", marginBottom: 6 }}>{lang.toUpperCase()}</div>}
+          {codeLines.join("\n")}
+        </pre>
+      );
+      i++; continue;
+    }
+    // h1
+    if (line.startsWith("# ")) {
+      els.push(<h1 key={i} style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, color: "#F0F2F8",
+        fontWeight: 600, margin: "0 0 4px" }}>{line.slice(2)}</h1>);
+      i++; continue;
+    }
+    // h2
+    if (line.startsWith("## ")) {
+      els.push(<h2 key={i} style={{ fontSize: 14, color: "#E8B96A", fontWeight: 700,
+        margin: "18px 0 8px", letterSpacing: "0.04em" }}>{line.slice(3)}</h2>);
+      i++; continue;
+    }
+    // h3
+    if (line.startsWith("### ")) {
+      els.push(<h3 key={i} style={{ fontSize: 12, color: "#A0AABA", fontWeight: 700,
+        margin: "12px 0 6px", letterSpacing: "0.03em" }}>{line.slice(4)}</h3>);
+      i++; continue;
+    }
+    // hr
+    if (line.startsWith("---")) {
+      els.push(<hr key={i} style={{ border: "none", borderTop: "1px solid #1E2535", margin: "16px 0" }} />);
+      i++; continue;
+    }
+    // bullet list item
+    if (line.startsWith("- ")) {
+      const items = [];
+      while (i < lines.length && lines[i].startsWith("- ")) {
+        items.push(lines[i].slice(2));
+        i++;
+      }
+      els.push(
+        <ul key={i} style={{ margin: "4px 0 10px", paddingLeft: 18, listStyle: "none" }}>
+          {items.map((item, j) => (
+            <li key={j} style={{ fontSize: 12, color: "#8896A8", lineHeight: 1.6, marginBottom: 3,
+              display: "flex", gap: 8, alignItems: "flex-start" }}>
+              <span style={{ color: "#3A4A5A", flexShrink: 0 }}>›</span>
+              <InlineMarkdown text={item} />
+            </li>
+          ))}
+        </ul>
+      );
+      continue;
+    }
+    // blank line
+    if (line.trim() === "") { i++; continue; }
+    // italic metadata line (*Source: ...*)
+    if (line.startsWith("*") && line.endsWith("*")) {
+      els.push(<div key={i} style={{ fontSize: 10, color: "#3A4A5A", fontStyle: "italic",
+        marginBottom: 3 }}>{line.slice(1, -1)}</div>);
+      i++; continue;
+    }
+    // paragraph
+    els.push(<p key={i} style={{ fontSize: 12, color: "#8896A8", lineHeight: 1.7, margin: "0 0 8px" }}>
+      <InlineMarkdown text={line} />
+    </p>);
+    i++;
+  }
+  return <div>{els}</div>;
+}
+
+function InlineMarkdown({ text }) {
+  // handle **bold**, `code`, and plain text
+  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.startsWith("**") && part.endsWith("**"))
+          return <strong key={i} style={{ color: "#CDD5E0", fontWeight: 700 }}>{part.slice(2, -2)}</strong>;
+        if (part.startsWith("`") && part.endsWith("`"))
+          return <code key={i} style={{ background: "#060A12", color: "#7DC87A", fontFamily: "monospace",
+            fontSize: 11, padding: "1px 5px", borderRadius: 3 }}>{part.slice(1, -1)}</code>;
+        return part;
+      })}
+    </>
+  );
+}
 
 // ─── DEFAULT STATE ────────────────────────────────────────────────────────────
 
@@ -332,9 +444,29 @@ export default function Dashboard() {
   const [state, setState]                   = useState(loadState);
   const [editTarget, setEditTarget]         = useState(null);
   const [editTargetVal, setEditTargetVal]   = useState("");
+  const [activeTab, setActiveTab]           = useState("overview");
+  const [docs, setDocs]                     = useState([]);
+  const [selectedDoc, setSelectedDoc]       = useState(null);
+  const modalRef                            = useRef(null);
 
   useEffect(() => { setTimeout(() => setMounted(true), 100); }, []);
   useEffect(() => { localStorage.setItem("trading-career-v4", JSON.stringify(state)); }, [state]);
+
+  // fetch docs — re-fetches on each panel open so new files are picked up automatically
+  useEffect(() => {
+    fetch("/api/docs")
+      .then(r => r.json())
+      .then(data => Array.isArray(data) && setDocs(data))
+      .catch(() => {});
+  }, []);
+
+  // close modal on Escape
+  useEffect(() => {
+    if (!selectedDoc) return;
+    const handler = (e) => { if (e.key === "Escape") setSelectedDoc(null); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [selectedDoc]);
 
   // ── computed ──────────────────────────────────────────────────────────────
   const calcProgress = useCallback((phaseId) => {
@@ -401,6 +533,13 @@ export default function Dashboard() {
   const milestones      = state.milestones || DEFAULT_STATE.milestones;
   const priorityColor   = { HIGH: "#E87A7A", MED: "#E8B96A", LOW: "#4A5A70" };
 
+  const TABS = [
+    { id: "overview",     label: "Overview"    },
+    { id: "curriculum",   label: "Curriculum"  },
+    { id: "resources",    label: "Resources"   },
+    { id: "performance",  label: "Performance" },
+  ];
+
   return (
     <div style={{ minHeight: "100vh", background: "#080C14", fontFamily: "'Inter', sans-serif", color: "#8896A8" }}>
       <style>{`
@@ -413,125 +552,268 @@ export default function Dashboard() {
       `}</style>
 
       {/* ── HEADER ── */}
-      <div style={{ borderBottom: "1px solid #1E2535", padding: "20px 28px 18px" }}>
-        <div style={{ maxWidth: 980, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <div style={{ fontSize: 11, letterSpacing: "0.15em", color: "#5A6A80", textTransform: "uppercase", marginBottom: 5, fontWeight: 600 }}>
-              Harrison Seaborn · Goal: Prop Firm Funded Trader
+      <div style={{ borderBottom: "1px solid #1E2535", padding: "20px 28px 0" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+            <div>
+              <div style={{ fontSize: 11, letterSpacing: "0.15em", color: "#5A6A80", textTransform: "uppercase", marginBottom: 5, fontWeight: 600 }}>
+                Harrison Seaborn · Goal: Prop Firm Funded Trader
+              </div>
+              <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, color: "#F0F2F8", fontWeight: 600 }}>
+                Career Progression Dashboard
+              </h1>
             </div>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, color: "#F0F2F8", fontWeight: 600 }}>
-              Career Progression Dashboard
-            </h1>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 11, color: "#5A6A80", marginBottom: 3, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 600 }}>Overall Progress</div>
+              <div style={{ fontFamily: "monospace", fontSize: 34, color: "#E8B96A", lineHeight: 1, fontWeight: 700 }}>
+                {overallPct}<span style={{ fontSize: 16 }}>%</span>
+              </div>
+            </div>
           </div>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 11, color: "#5A6A80", marginBottom: 3, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 600 }}>Overall Progress</div>
-            <div style={{ fontFamily: "monospace", fontSize: 34, color: "#E8B96A", lineHeight: 1, fontWeight: 700 }}>
-              {overallPct}<span style={{ fontSize: 16 }}>%</span>
-            </div>
+
+          {/* ── TAB NAV ── */}
+          <div style={{ display: "flex", gap: 0 }}>
+            {TABS.map(tab => {
+              const active = activeTab === tab.id;
+              return (
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
+                  background: "transparent", border: "none", cursor: "pointer",
+                  padding: "10px 22px", fontSize: 13, fontWeight: 600,
+                  color: active ? "#F0F2F8" : "#4A5A70",
+                  borderBottom: `2px solid ${active ? "#E8B96A" : "transparent"}`,
+                  letterSpacing: "0.03em", transition: "color 0.2s, border-color 0.2s",
+                  marginBottom: -1,
+                }}>
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
 
-      <div style={{ maxWidth: 980, margin: "0 auto", padding: "24px 28px" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 28px" }}>
 
-        {/* ── PHASES ── */}
-        <div style={{ marginBottom: 26 }}>
-          <SectionLabel>Learning Phases — click to explore</SectionLabel>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-            {PHASES.map(p => (
-              <PhaseCard key={p.id} phase={p} active={activePhase === p.id}
-                progress={calcProgress(p.id)} onClick={() => setActivePhase(p.id)} />
-            ))}
-          </div>
-        </div>
-
-        {/* ── ROW 1: Modules | Skills + Actions ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 18, marginBottom: 18 }}>
-
-          {/* Modules */}
-          <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "18px 16px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <SectionLabel>{activePhaseData?.label} · Modules</SectionLabel>
-              <div style={{ fontSize: 12, color: activePhaseData?.color, fontWeight: 700 }}>
-                {filteredMods.reduce((s, m) => s + (state.completions[m.id] || []).filter(Boolean).length, 0)} /
-                {filteredMods.reduce((s, m) => s + m.items.length, 0)} complete
+        {/* ══════════════════════════════════════════════════════════════════
+            TAB: OVERVIEW
+        ══════════════════════════════════════════════════════════════════ */}
+        {activeTab === "overview" && (
+          <div>
+            {/* Phase summary cards — clicking also switches to Curriculum */}
+            <div style={{ marginBottom: 28 }}>
+              <SectionLabel>Learning Phases</SectionLabel>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
+                {PHASES.map(p => (
+                  <PhaseCard key={p.id} phase={p} active={false}
+                    progress={calcProgress(p.id)}
+                    onClick={() => { setActivePhase(p.id); setActiveTab("curriculum"); }} />
+                ))}
               </div>
             </div>
-            <Hint>EXPAND A MODULE · CLICK ITEMS TO MARK COMPLETE</Hint>
-            {filteredMods.map(m => (
-              <ModuleBar key={m.id} mod={m}
-                completions={state.completions[m.id] || m.items.map(() => false)}
-                onToggle={idx => toggleItem(m.id, idx)} />
-            ))}
-          </div>
 
-          {/* Skills + Priority Actions */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
-            <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "18px 16px" }}>
-              <SectionLabel>Skill Proficiency</SectionLabel>
-              <Hint>DERIVED FROM MODULE COMPLETION · BASE FROM INSTITUTIONAL BACKGROUND</Hint>
-              {SKILL_MODULE_MAP.map(skill => (
-                <SkillRow key={skill.name} skill={skill}
-                  level={computeSkillLevel(skill, state.completions)}
-                  base={skill.base} mounted={mounted} />
-              ))}
-            </div>
-
-            <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "18px 16px", flex: 1 }}>
-              <SectionLabel>Priority Actions</SectionLabel>
-              {NEXT_ACTIONS.map((action, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 7,
-                  padding: "7px 10px", background: "#080C14", borderRadius: 7,
-                  borderLeft: `2px solid ${priorityColor[action.priority]}` }}>
-                  <span style={{ fontSize: 8, fontWeight: 700, color: priorityColor[action.priority],
-                    letterSpacing: "0.08em", paddingTop: 2, minWidth: 26 }}>{action.priority}</span>
-                  <span style={{ fontSize: 11, color: "#8896A8", lineHeight: 1.4 }}>{action.text}</span>
-                </div>
-              ))}
-            </div>
-
-          </div>
-        </div>
-
-        {/* ── ROW 2: Books | Strategy Targets + Videos ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, marginBottom: 18 }}>
-
-          {/* Essential Reading */}
-          <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "18px 16px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <SectionLabel>Essential Reading</SectionLabel>
-              <div style={{ display: "flex", gap: 10, fontSize: 10 }}>
-                <span style={{ color: "#7DC87A" }}>● {booksRead} read</span>
-                <span style={{ color: "#E8B96A" }}>● {booksReading} reading</span>
-                <span style={{ color: "#3A4A5A" }}>● {BOOK_DEFS.length - booksRead - booksReading} queued</span>
-              </div>
-            </div>
-            <Hint>CLICK DOT TO CYCLE: QUEUED → READING → READ</Hint>
-            {BOOK_DEFS.map((book, i) => {
-              const status   = state.books[book.title] || "unread";
-              const dotColor = status === "read" ? "#7DC87A" : status === "reading" ? "#E8B96A" : "#252D3D";
-              return (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0",
-                  borderBottom: i < BOOK_DEFS.length - 1 ? "1px solid #131B28" : "none" }}>
-                  <div onClick={() => cycleBook(book.title)} style={{ width: 8, height: 8, borderRadius: "50%",
-                    flexShrink: 0, background: dotColor, cursor: "pointer", transition: "background 0.2s",
-                    border: status === "unread" ? "1px solid #3A4A5A" : "none" }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: 11, color: status === "read" ? "#5A7A5A" : "#A0AABA" }}>{book.title}</span>
-                    <span style={{ fontSize: 10, color: "#3A4A5A", marginLeft: 6 }}>{book.author}</span>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+              {/* Priority Actions */}
+              <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "20px 18px" }}>
+                <SectionLabel>Priority Actions</SectionLabel>
+                {NEXT_ACTIONS.map((action, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 9,
+                    padding: "9px 12px", background: "#080C14", borderRadius: 8,
+                    borderLeft: `2px solid ${priorityColor[action.priority]}` }}>
+                    <span style={{ fontSize: 8, fontWeight: 700, color: priorityColor[action.priority],
+                      letterSpacing: "0.08em", paddingTop: 2, minWidth: 26 }}>{action.priority}</span>
+                    <span style={{ fontSize: 12, color: "#8896A8", lineHeight: 1.5 }}>{action.text}</span>
                   </div>
-                  <span style={{ fontSize: 9, color: "#3A4A5A", background: "#131B28",
-                    padding: "2px 6px", borderRadius: 4, flexShrink: 0 }}>{book.category}</span>
-                </div>
-              );
-            })}
+                ))}
+              </div>
+
+              {/* Career Milestones */}
+              <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "20px 18px" }}>
+                <SectionLabel>Career Milestones</SectionLabel>
+                <Hint>CLICK TO TOGGLE COMPLETE</Hint>
+                {MILESTONE_DEFS.map((m, i) => {
+                  const done = milestones[i];
+                  return (
+                    <div key={i} onClick={() => toggleMilestone(i)}
+                      style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 11,
+                        cursor: "pointer", borderRadius: 6, padding: "3px 4px", transition: "background 0.1s" }}
+                      onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
+                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                      <div style={{ width: 16, height: 16, borderRadius: "50%", flexShrink: 0,
+                        border: `1.5px solid ${done ? m.color : "#2A3A4A"}`,
+                        background: done ? m.color + "33" : "transparent",
+                        display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
+                        {done && <span style={{ fontSize: 8, color: m.color }}>✓</span>}
+                      </div>
+                      <span style={{ fontSize: 12, lineHeight: 1.3,
+                        color: done ? "#5A7A5A" : "#6A7A8A",
+                        textDecoration: done ? "line-through" : "none",
+                        transition: "all 0.2s" }}>{m.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
+        )}
 
-          {/* Strategy Targets + Video Library */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {/* ══════════════════════════════════════════════════════════════════
+            TAB: CURRICULUM
+        ══════════════════════════════════════════════════════════════════ */}
+        {activeTab === "curriculum" && (
+          <div>
+            {/* Phase selector */}
+            <div style={{ marginBottom: 24 }}>
+              <SectionLabel>Learning Phases — click to switch</SectionLabel>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
+                {PHASES.map(p => (
+                  <PhaseCard key={p.id} phase={p} active={activePhase === p.id}
+                    progress={calcProgress(p.id)} onClick={() => setActivePhase(p.id)} />
+                ))}
+              </div>
+            </div>
 
-            <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "18px 16px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 18 }}>
+              {/* Modules */}
+              <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "20px 18px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <SectionLabel>{activePhaseData?.label} · Modules</SectionLabel>
+                  <div style={{ fontSize: 12, color: activePhaseData?.color, fontWeight: 700 }}>
+                    {filteredMods.reduce((s, m) => s + (state.completions[m.id] || []).filter(Boolean).length, 0)} /
+                    {filteredMods.reduce((s, m) => s + m.items.length, 0)} complete
+                  </div>
+                </div>
+                <Hint>EXPAND A MODULE · CLICK ITEMS TO MARK COMPLETE</Hint>
+                {filteredMods.map(m => (
+                  <ModuleBar key={m.id} mod={m}
+                    completions={state.completions[m.id] || m.items.map(() => false)}
+                    onToggle={idx => toggleItem(m.id, idx)} />
+                ))}
+              </div>
+
+              {/* Skill Proficiency */}
+              <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "20px 18px" }}>
+                <SectionLabel>Skill Proficiency</SectionLabel>
+                <Hint>DERIVED FROM MODULE COMPLETION · BASE FROM INSTITUTIONAL BACKGROUND</Hint>
+                {SKILL_MODULE_MAP.map(skill => (
+                  <SkillRow key={skill.name} skill={skill}
+                    level={computeSkillLevel(skill, state.completions)}
+                    base={skill.base} mounted={mounted} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════
+            TAB: RESOURCES
+        ══════════════════════════════════════════════════════════════════ */}
+        {activeTab === "resources" && (
+          <div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, marginBottom: 18 }}>
+              {/* Essential Reading */}
+              <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "20px 18px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <SectionLabel>Essential Reading</SectionLabel>
+                  <div style={{ display: "flex", gap: 10, fontSize: 10 }}>
+                    <span style={{ color: "#7DC87A" }}>● {booksRead} read</span>
+                    <span style={{ color: "#E8B96A" }}>● {booksReading} reading</span>
+                    <span style={{ color: "#3A4A5A" }}>● {BOOK_DEFS.length - booksRead - booksReading} queued</span>
+                  </div>
+                </div>
+                <Hint>CLICK DOT TO CYCLE: QUEUED → READING → READ</Hint>
+                {BOOK_DEFS.map((book, i) => {
+                  const status   = state.books[book.title] || "unread";
+                  const dotColor = status === "read" ? "#7DC87A" : status === "reading" ? "#E8B96A" : "#252D3D";
+                  return (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0",
+                      borderBottom: i < BOOK_DEFS.length - 1 ? "1px solid #131B28" : "none" }}>
+                      <div onClick={() => cycleBook(book.title)} style={{ width: 8, height: 8, borderRadius: "50%",
+                        flexShrink: 0, background: dotColor, cursor: "pointer", transition: "background 0.2s",
+                        border: status === "unread" ? "1px solid #3A4A5A" : "none" }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ fontSize: 12, color: status === "read" ? "#5A7A5A" : "#A0AABA" }}>{book.title}</span>
+                        <span style={{ fontSize: 10, color: "#3A4A5A", marginLeft: 6 }}>{book.author}</span>
+                      </div>
+                      <span style={{ fontSize: 9, color: "#3A4A5A", background: "#131B28",
+                        padding: "2px 6px", borderRadius: 4, flexShrink: 0 }}>{book.category}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Video Library */}
+              <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "20px 18px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <SectionLabel>Video Library</SectionLabel>
+                  <div style={{ fontSize: 12, color: "#E8B96A", fontFamily: "monospace", fontWeight: 700 }}>{totalVideos} saved</div>
+                </div>
+                <Hint>USE + / − TO UPDATE COUNTS</Hint>
+                {VIDEO_CAT_DEFS.map(cat => {
+                  const count = state.videos[cat.label] || 0;
+                  return (
+                    <div key={cat.label} style={{ marginBottom: 14 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                        <span style={{ fontSize: 12, color: "#A0AABA" }}>{cat.label}</span>
+                        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                          <MiniBtn onClick={() => adjustVideo(cat.label, -1)}>−</MiniBtn>
+                          <span style={{ fontSize: 12, color: cat.color, fontFamily: "monospace",
+                            fontWeight: 700, minWidth: 22, textAlign: "center" }}>{count}</span>
+                          <MiniBtn onClick={() => adjustVideo(cat.label, 1)}>+</MiniBtn>
+                        </div>
+                      </div>
+                      <div style={{ height: 4, background: "#1E2535", borderRadius: 4, overflow: "hidden" }}>
+                        <div style={{ height: "100%", borderRadius: 4,
+                          width: mounted ? `${(count / maxVideo) * 100}%` : "0%",
+                          background: cat.color, transition: "width 0.4s ease",
+                          boxShadow: `0 0 6px ${cat.color}60` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Reference Docs */}
+            {docs.length > 0 && (
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <SectionLabel>Reference Docs</SectionLabel>
+                  <span style={{ fontSize: 10, color: "#3A4A5A", fontFamily: "monospace" }}>{docs.length} docs · auto-synced from /docs</span>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
+                  {docs.map((doc, i) => {
+                    const color = DOC_CATEGORY_COLOR[doc.category] || "#B89FD8";
+                    const lines = doc.content.split("\n").filter(l => l.trim()).length;
+                    return (
+                      <div key={i} onClick={() => setSelectedDoc(doc)}
+                        style={{ background: "#0D1321", border: `1px solid ${color}30`,
+                          borderRadius: 10, padding: "14px 16px", cursor: "pointer",
+                          transition: "border-color 0.2s, background 0.2s",
+                          borderLeft: `3px solid ${color}` }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "#111B2E"; e.currentTarget.style.borderColor = color + "80"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "#0D1321"; e.currentTarget.style.borderColor = color + "30"; }}>
+                        <div style={{ fontSize: 9, color: color, letterSpacing: "0.12em", textTransform: "uppercase",
+                          fontWeight: 700, marginBottom: 6 }}>{doc.category}</div>
+                        <div style={{ fontSize: 13, color: "#CDD5E0", fontWeight: 600, lineHeight: 1.3,
+                          marginBottom: 8 }}>{doc.title}</div>
+                        <div style={{ fontSize: 10, color: "#3A4A5A" }}>{lines} lines · click to read</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════
+            TAB: PERFORMANCE
+        ══════════════════════════════════════════════════════════════════ */}
+        {activeTab === "performance" && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+
+            {/* Strategy Targets */}
+            <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "20px 18px" }}>
               <SectionLabel>Strategy Performance Targets</SectionLabel>
               <Hint>CLICK CURRENT VALUE TO EDIT</Hint>
               {TARGET_DEFS.map(item => {
@@ -539,35 +821,35 @@ export default function Dashboard() {
                 const progress = item.higher
                   ? Math.min(100, (current / item.target) * 100)
                   : current === 0 ? 0 : Math.min(100, (item.target / current) * 100);
-                const met        = item.higher ? current >= item.target : current <= item.target;
-                const isEditing  = editTarget === item.metric;
+                const met       = item.higher ? current >= item.target : current <= item.target;
+                const isEditing = editTarget === item.metric;
                 return (
-                  <div key={item.metric} style={{ marginBottom: 11 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                      <span style={{ fontSize: 12, color: "#8896A8" }}>{item.metric}</span>
+                  <div key={item.metric} style={{ marginBottom: 14 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                      <span style={{ fontSize: 13, color: "#8896A8" }}>{item.metric}</span>
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         {isEditing ? (
                           <input autoFocus value={editTargetVal}
                             onChange={e => setEditTargetVal(e.target.value)}
                             onBlur={() => commitTarget(item.metric)}
                             onKeyDown={e => e.key === "Enter" && commitTarget(item.metric)}
-                            style={{ width: 54, background: "#131B28",
+                            style={{ width: 60, background: "#131B28",
                               border: `1px solid ${met ? "#7DC87A" : "#E87A7A"}`,
                               borderRadius: 4, color: met ? "#7DC87A" : "#E87A7A",
-                              fontFamily: "monospace", fontSize: 12, fontWeight: 700,
-                              padding: "1px 4px", outline: "none", textAlign: "right" }} />
+                              fontFamily: "monospace", fontSize: 13, fontWeight: 700,
+                              padding: "2px 6px", outline: "none", textAlign: "right" }} />
                         ) : (
                           <span onClick={() => { setEditTarget(item.metric); setEditTargetVal(String(current)); }}
-                            style={{ fontSize: 12, color: met ? "#7DC87A" : "#E87A7A", fontFamily: "monospace",
+                            style={{ fontSize: 13, color: met ? "#7DC87A" : "#E87A7A", fontFamily: "monospace",
                               fontWeight: 700, cursor: "pointer",
                               borderBottom: "1px dashed", borderColor: "currentColor" }}>
                             {current}{item.unit}
                           </span>
                         )}
-                        <span style={{ fontSize: 10, color: "#3A4A5A" }}>→ {item.target}{item.unit}</span>
+                        <span style={{ fontSize: 11, color: "#3A4A5A" }}>→ {item.target}{item.unit}</span>
                       </div>
                     </div>
-                    <div style={{ height: 4, background: "#1E2535", borderRadius: 4, overflow: "hidden" }}>
+                    <div style={{ height: 5, background: "#1E2535", borderRadius: 4, overflow: "hidden" }}>
                       <div style={{ height: "100%", width: mounted ? `${progress}%` : "0%",
                         background: met ? "#7DC87A" : "linear-gradient(90deg, #E87A7A, #E8B96A)",
                         borderRadius: 4, transition: "width 0.5s ease",
@@ -578,99 +860,70 @@ export default function Dashboard() {
               })}
             </div>
 
-            <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "18px 16px", flex: 1 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <SectionLabel>Video Library</SectionLabel>
-                <div style={{ fontSize: 12, color: "#E8B96A", fontFamily: "monospace", fontWeight: 700 }}>{totalVideos} saved</div>
+            {/* Weekly Activity */}
+            <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "20px 18px" }}>
+              <SectionLabel>Weekly Activity</SectionLabel>
+              <Hint>CLICK BAR +1 · RIGHT-CLICK −1</Hint>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 120, marginTop: 12 }}>
+                {DAYS.map(day => {
+                  const val  = state.activity[day] || 0;
+                  const peak = val === maxActivity && val > 0;
+                  return (
+                    <div key={day} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}
+                      onContextMenu={e => { e.preventDefault(); adjustActivity(day, -1); }}>
+                      <div onClick={() => adjustActivity(day, 1)}
+                        title={`${val} sessions — click +1, right-click −1`}
+                        style={{ width: "100%", borderRadius: 4,
+                          height: `${(val / 10) * 90}px`, minHeight: 4,
+                          background: peak ? "#E8B96A" : "#1E2A3D",
+                          boxShadow: peak ? "0 0 12px #E8B96A60" : "none",
+                          transition: "height 0.3s ease, background 0.3s ease",
+                          cursor: "pointer", alignSelf: "flex-end" }} />
+                      <span style={{ fontSize: 10, color: "#4A5A70", fontWeight: 600, letterSpacing: "0.05em" }}>{day}</span>
+                    </div>
+                  );
+                })}
               </div>
-              <Hint>USE + / − TO UPDATE COUNTS</Hint>
-              {VIDEO_CAT_DEFS.map(cat => {
-                const count = state.videos[cat.label] || 0;
-                return (
-                  <div key={cat.label} style={{ marginBottom: 9 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                      <span style={{ fontSize: 11, color: "#A0AABA" }}>{cat.label}</span>
-                      <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                        <MiniBtn onClick={() => adjustVideo(cat.label, -1)}>−</MiniBtn>
-                        <span style={{ fontSize: 11, color: cat.color, fontFamily: "monospace",
-                          fontWeight: 700, minWidth: 18, textAlign: "center" }}>{count}</span>
-                        <MiniBtn onClick={() => adjustVideo(cat.label, 1)}>+</MiniBtn>
-                      </div>
-                    </div>
-                    <div style={{ height: 4, background: "#1E2535", borderRadius: 4, overflow: "hidden" }}>
-                      <div style={{ height: "100%", borderRadius: 4,
-                        width: mounted ? `${(count / maxVideo) * 100}%` : "0%",
-                        background: cat.color, transition: "width 0.4s ease",
-                        boxShadow: `0 0 6px ${cat.color}60` }} />
-                    </div>
-                  </div>
-                );
-              })}
             </div>
 
           </div>
-        </div>
+        )}
 
-        {/* ── ROW 3: Activity | Milestones ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
-
-          <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "18px 16px" }}>
-            <SectionLabel>Weekly Activity</SectionLabel>
-            <Hint>CLICK BAR +1 · RIGHT-CLICK −1</Hint>
-            <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 64 }}>
-              {DAYS.map(day => {
-                const val  = state.activity[day] || 0;
-                const peak = val === maxActivity && val > 0;
-                return (
-                  <div key={day} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}
-                    onContextMenu={e => { e.preventDefault(); adjustActivity(day, -1); }}>
-                    <div onClick={() => adjustActivity(day, 1)}
-                      title={`${val} sessions — click +1, right-click −1`}
-                      style={{ width: "100%", borderRadius: 3,
-                        height: `${(val / 10) * 50}px`, minHeight: 3,
-                        background: peak ? "#E8B96A" : "#1E2A3D",
-                        boxShadow: peak ? "0 0 10px #E8B96A60" : "none",
-                        transition: "height 0.3s ease, background 0.3s ease",
-                        cursor: "pointer", alignSelf: "flex-end" }} />
-                    <span style={{ fontSize: 9, color: "#4A5A70", fontWeight: 600, letterSpacing: "0.05em" }}>{day}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "18px 16px" }}>
-            <SectionLabel>Career Milestones</SectionLabel>
-            <Hint>CLICK TO TOGGLE COMPLETE</Hint>
-            {MILESTONE_DEFS.map((m, i) => {
-              const done = milestones[i];
-              return (
-                <div key={i} onClick={() => toggleMilestone(i)}
-                  style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10,
-                    cursor: "pointer", borderRadius: 6, padding: "2px 4px", transition: "background 0.1s" }}
-                  onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
-                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                  <div style={{ width: 16, height: 16, borderRadius: "50%", flexShrink: 0,
-                    border: `1.5px solid ${done ? m.color : "#2A3A4A"}`,
-                    background: done ? m.color + "33" : "transparent",
-                    display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
-                    {done && <span style={{ fontSize: 8, color: m.color }}>✓</span>}
-                  </div>
-                  <span style={{ fontSize: 12, lineHeight: 1.3,
-                    color: done ? "#5A7A5A" : "#6A7A8A",
-                    textDecoration: done ? "line-through" : "none",
-                    transition: "all 0.2s" }}>{m.label}</span>
-                </div>
-              );
-            })}
-          </div>
-
-        </div>
-
-        <div style={{ marginTop: 24, textAlign: "center", fontSize: 10, color: "#1E2535", letterSpacing: "0.15em", fontWeight: 600 }}>
+        <div style={{ marginTop: 32, textAlign: "center", fontSize: 10, color: "#1E2535", letterSpacing: "0.15em", fontWeight: 600 }}>
           MIDNIGHTODYSSEY · QUANT FRAMEWORK v0.1 · CAREER PROGRESSION TRACKER
         </div>
       </div>
+
+      {/* ── DOC READER MODAL ── */}
+      {selectedDoc && (
+        <div onClick={e => e.target === e.currentTarget && setSelectedDoc(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(4,8,16,0.88)",
+            display: "flex", alignItems: "flex-start", justifyContent: "center",
+            zIndex: 1000, padding: "40px 24px", overflowY: "auto" }}>
+          <div ref={modalRef} style={{ background: "#0D1321", border: "1px solid #252D3D",
+            borderRadius: 14, width: "100%", maxWidth: 720,
+            padding: "28px 32px", position: "relative" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+              <div>
+                <div style={{ fontSize: 9, color: DOC_CATEGORY_COLOR[selectedDoc.category] || "#B89FD8",
+                  letterSpacing: "0.15em", textTransform: "uppercase", fontWeight: 700, marginBottom: 6 }}>
+                  {selectedDoc.category}
+                </div>
+                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, color: "#F0F2F8",
+                  fontWeight: 600 }}>{selectedDoc.title}</div>
+                <div style={{ fontSize: 10, color: "#3A4A5A", marginTop: 4 }}>{selectedDoc.filename}</div>
+              </div>
+              <button onClick={() => setSelectedDoc(null)}
+                style={{ background: "#1E2535", border: "none", borderRadius: 6, color: "#5A6A7A",
+                  width: 28, height: 28, fontSize: 16, cursor: "pointer", flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+            </div>
+            <div style={{ borderTop: "1px solid #1E2535", paddingTop: 20 }}>
+              <MarkdownDoc content={selectedDoc.content} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
