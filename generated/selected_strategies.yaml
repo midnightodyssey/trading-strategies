@@ -1,54 +1,93 @@
-schema_version: 1
-generated_at_utc: '2026-03-08T06:32:48.896958+00:00'
+schema_version: 2
+generated_at_utc: '2026-03-08T06:45:03.230026+00:00'
 source:
   run_id: '20260308_055045'
   run_dir: artifacts\backtests\20260308_055045
   summary_csv: artifacts\backtests\20260308_055045\strategy_summary.csv
-  runner_config: C:\Users\harrison.seaborn\Documents\trading-strategies\trading-strategies\runner_config.yaml
+  metrics_long_csv: artifacts\backtests\20260308_055045\strategy_metrics_long.csv
+  sharpe_matrix_csv: artifacts\backtests\20260308_055045\sharpe_matrix.csv
+  runner_config: runner_config.yaml
+selection_mode: per_symbol
 selection_rules:
-  top_n: 3
+  top_k_global: 3
+  top_n_per_symbol: 1
   min_symbols: 5
   min_sharpe: 0.0
-  min_trades: 50.0
+  min_trades: 50
   max_drawdown_abs: 0.35
-  fallback_to_top_n_if_empty: true
+  diversify: true
+  corr_threshold: 0.85
+  max_total_allocations: 10
+  fallback_to_unfiltered_if_empty: true
+risk_budget:
+  max_symbol_weight: 0.3
+  max_strategy_weight: 0.25
 selected_strategies:
 - name: SMACrossover
   params: {}
-  selection_score: 0.8875
-  diagnostics:
-    symbols_tested: 53
-    mean_sharpe_ratio: -0.2373207547169811
-    mean_sortino_ratio: -0.2227679245283018
-    mean_calmar_ratio: 0.071254716981132
-    mean_max_drawdown: -0.4195792452830189
-    mean_final_equity: 0.9915792452830188
-    total_trades: 895.0
+- name: TrendFilteredRSI
+  params: {}
+- name: MACDCrossover
+  params:
+    fast: 12
+    slow: 26
+    signal_period: 9
+- name: ATRBreakout
+  params:
+    period: 20
+    atr_period: 14
 - name: EMACrossover
   params:
     fast: 12
     slow: 26
-  selection_score: 0.74375
-  diagnostics:
-    symbols_tested: 53
-    mean_sharpe_ratio: -0.2985396226415094
-    mean_sortino_ratio: -0.2795471698113208
-    mean_calmar_ratio: 0.0209150943396226
-    mean_max_drawdown: -0.4510754716981132
-    mean_final_equity: 0.8985150943396226
-    total_trades: 1521.0
 - name: RSIMeanReversion
   params: {}
-  selection_score: 0.60625
-  diagnostics:
-    symbols_tested: 53
-    mean_sharpe_ratio: -0.8682962264150943
-    mean_sortino_ratio: -1.1628037735849055
-    mean_calmar_ratio: -0.1592698113207547
-    mean_max_drawdown: -0.3147113207547169
-    mean_final_equity: 0.814422641509434
-    total_trades: 5573.0
-ranked_table:
+- name: BollingerMeanReversion
+  params: {}
+- name: PriceBreakout
+  params: {}
+selected_allocations:
+- symbol: AAPL
+  strategy: SMACrossover
+  selection_score: 0.764623
+  source: per_symbol
+  weight: 0.125
+- symbol: ABBV
+  strategy: TrendFilteredRSI
+  selection_score: 0.574057
+  source: per_symbol
+  weight: 0.125
+- symbol: ADBE
+  strategy: MACDCrossover
+  selection_score: 0.916156
+  source: per_symbol
+  weight: 0.125
+- symbol: AMD
+  strategy: ATRBreakout
+  selection_score: 0.897642
+  source: per_symbol
+  weight: 0.125
+- symbol: AMGN
+  strategy: EMACrossover
+  selection_score: 0.923113
+  source: per_symbol
+  weight: 0.125
+- symbol: AMZN
+  strategy: RSIMeanReversion
+  selection_score: 0.79092
+  source: per_symbol
+  weight: 0.125
+- symbol: AVGO
+  strategy: BollingerMeanReversion
+  selection_score: 0.544222
+  source: per_symbol
+  weight: 0.125
+- symbol: BA
+  strategy: PriceBreakout
+  selection_score: 0.606899
+  source: per_symbol
+  weight: 0.125
+ranked_table_global:
 - strategy: SMACrossover
   selection_score: 0.8875
   mean_sharpe_ratio: -0.2373207547169811
