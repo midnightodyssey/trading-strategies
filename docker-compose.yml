@@ -68,6 +68,7 @@ services:
       AUTO_RESTART_TIME:              "11:45 PM"
       RELOGIN_AFTER_TWOFA_TIMEOUT:    "yes"
       TWOFA_TIMEOUT_ACTION:           "restart"
+      IBC_TrustedIPs: ""
 
       # Use custom ibc-custom.ini (has SecondFactorDevice=TOTP + IbLoginTotpSecret)
       # ibc-custom.ini lives on the VPS only — never commit it (contains TOTP secret)
