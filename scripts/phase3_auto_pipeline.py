@@ -46,7 +46,20 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument('--run-runner', action='store_true')
     p.add_argument('--dry-run', action='store_true')
 
+    p.add_argument(
+        '--selection-mode',
+        choices=['global', 'per_symbol'],
+        default='global',
+        help='Selection mode passed through to select_strategies.py',
+    )
     p.add_argument('--top-n', type=int, default=3)
+    p.add_argument('--top-k-global', type=int, default=None)
+    p.add_argument('--top-n-per-symbol', type=int, default=1)
+    p.add_argument('--max-total-allocations', type=int, default=30)
+    p.add_argument('--corr-threshold', type=float, default=0.85)
+    p.add_argument('--max-symbol-weight', type=float, default=0.30)
+    p.add_argument('--max-strategy-weight', type=float, default=0.25)
+
     p.add_argument('--min-symbols', type=int, default=5)
     p.add_argument('--min-sharpe', type=float, default=0.0)
     p.add_argument('--min-trades', type=float, default=50.0)
@@ -255,12 +268,20 @@ def main() -> None:
         )
 
     if do_selection:
+        top_k_global = args.top_k_global if args.top_k_global is not None else args.top_n
+
         cmd = [
             args.python_bin,
             str(repo_root / 'scripts' / 'select_strategies.py'),
             '--runner-config', str(base_cfg_path),
             '--output', str(selected_path),
-            '--top-n', str(args.top_n),
+            '--selection-mode', str(args.selection_mode),
+            '--top-k-global', str(top_k_global),
+            '--top-n-per-symbol', str(args.top_n_per_symbol),
+            '--max-total-allocations', str(args.max_total_allocations),
+            '--corr-threshold', str(args.corr_threshold),
+            '--max-symbol-weight', str(args.max_symbol_weight),
+            '--max-strategy-weight', str(args.max_strategy_weight),
             '--min-symbols', str(args.min_symbols),
             '--min-sharpe', str(args.min_sharpe),
             '--min-trades', str(args.min_trades),

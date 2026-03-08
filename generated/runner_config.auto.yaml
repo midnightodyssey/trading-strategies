@@ -48,7 +48,7 @@ notifications:
     to_addr: ${EMAIL_USER}
 execution_plan:
   source: auto_selection
-  generated_at_utc: '2026-03-08T06:47:49.197591+00:00'
+  generated_at_utc: '2026-03-08T06:56:34.961177+00:00'
   selected_allocations:
   - symbol: '*'
     strategy: SMACrossover
