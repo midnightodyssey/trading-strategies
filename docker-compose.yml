@@ -56,6 +56,7 @@ services:
   ib-gateway:
     image: ghcr.io/gnzsnz/ib-gateway:stable
     restart: unless-stopped
+    network_mode: host
 
     # .env.ibkr must contain: TWS_USERID, TWS_PASSWORD, TRADING_MODE
     # IMPORTANT: passwords must not contain $ (docker-compose expands shell vars).
