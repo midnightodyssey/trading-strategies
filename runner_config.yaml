@@ -10,11 +10,20 @@
 #   5. Run:  python -m runner.daily_runner
 #
 # AVAILABLE STRATEGIES
-#   EMACrossover          fast (int), slow (int)         — default 12/26
-#   SMACrossover          fast (int), slow (int)         — default 20/50
-#   RSIMeanReversion      period (int), oversold (float), overbought (float)
-#   BollingerMeanReversion period (int), num_std (float) — default 20/2.0
-#   PriceBreakout         window (int)                   — default 20
+#   Crossover / trend-following:
+#   EMACrossover          fast (int), slow (int)                        — default 12/26
+#   SMACrossover          fast (int), slow (int)                        — default 20/50
+#   MACDCrossover         fast (int), slow (int), signal_period (int)   — default 12/26/9
+#
+#   Momentum / breakout:
+#   PriceBreakout         period (int)                                  — default 20
+#   ATRBreakout           period (int), atr_period (int)                — default 20/14
+#
+#   Mean reversion:
+#   RSIMeanReversion      period (int), oversold (float), overbought (float)  — default 14/30/70
+#   BollingerMeanReversion period (int), std_dev (float)               — default 20/2.0
+#   TrendFilteredRSI      rsi_period (int), oversold (float),
+#                         overbought (float), trend_period (int)        — default 14/30/70/200
 #
 # SENSITIVE VALUES
 #   Replace any value with ${ENV_VAR} to read from an environment variable.
@@ -55,6 +64,12 @@ symbols:
   - GOOGL
   - AMZN
   - SPY    # S&P 500 ETF — good diversifier, highly liquid
+  - QQQ
+  - IVV
+  - TSLA
+  - NVDA
+  - META
+  - JPM
 
 
 # ── STRATEGIES ────────────────────────────────────────────────────────────────
@@ -63,18 +78,44 @@ symbols:
 #
 # Start with one strategy; add more as you backtest and validate them.
 strategies:
+  # ── STEP 1: Run scripts/backtest_pipeline.py to find the best strategies
+  #           for your chosen symbols, then activate them below.
+  #
+  # ── Only one strategy active by default (safe starting point).
+  #    Add more to the voting pool once you've validated them OOS.
+  #    All active strategies vote {-1, 0, +1}; majority wins.
+  #    e.g. [+1, +1, -1] → long   |   [+1, -1] → flat (tie → 0)
+
   - name: EMACrossover
     params:
       fast: 12
       slow: 26
 
-  # Uncomment to add a second strategy to the voting pool:
+  # ── Additional strategies (uncomment after backtest validation) ────────────
+
+  # - name: MACDCrossover       # double-smoothed trend; fewer whipsaws than EMA
+  #   params:
+  #     fast: 12
+  #     slow: 26
+  #     signal_period: 9
+
+  # - name: ATRBreakout         # turtle breakout with volatility filter
+  #   params:
+  #     period: 20
+  #     atr_period: 14
+
+  # - name: TrendFilteredRSI    # RSI dip-buy/pop-sell, only in trend direction
+  #   params:
+  #     rsi_period: 14
+  #     oversold: 30
+  #     overbought: 70
+  #     trend_period: 200
+
   # - name: SMACrossover
   #   params:
   #     fast: 20
   #     slow: 50
 
-  # Uncomment to add RSI mean-reversion:
   # - name: RSIMeanReversion
   #   params:
   #     period: 14

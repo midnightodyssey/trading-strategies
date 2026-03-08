@@ -56,11 +56,14 @@ from framework.broker          import IBKRBroker, IBKRConnectionError
 from framework.execution       import OMS
 from framework.execution.sizing import fixed_fraction, vol_target
 from framework.strategies      import (
-    EMACrossover,
-    SMACrossover,
-    RSIMeanReversion,
+    ATRBreakout,
     BollingerMeanReversion,
+    EMACrossover,
+    MACDCrossover,
     PriceBreakout,
+    RSIMeanReversion,
+    SMACrossover,
+    TrendFilteredRSI,
 )
 from framework.strategies.base import Strategy
 
@@ -71,11 +74,17 @@ from .runner_config  import RunnerConfig, SizingSettings, StrategySpec
 # ─── STRATEGY REGISTRY ────────────────────────────────────────────────────────
 
 _STRATEGY_REGISTRY: Dict[str, type] = {
-    "EMACrossover":          EMACrossover,
-    "SMACrossover":          SMACrossover,
-    "RSIMeanReversion":      RSIMeanReversion,
+    # Crossover / trend-following
+    "EMACrossover":           EMACrossover,
+    "SMACrossover":           SMACrossover,
+    "MACDCrossover":          MACDCrossover,
+    # Momentum / breakout
+    "PriceBreakout":          PriceBreakout,
+    "ATRBreakout":            ATRBreakout,
+    # Mean reversion
+    "RSIMeanReversion":       RSIMeanReversion,
     "BollingerMeanReversion": BollingerMeanReversion,
-    "PriceBreakout":         PriceBreakout,
+    "TrendFilteredRSI":       TrendFilteredRSI,
 }
 
 

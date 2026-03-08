@@ -2,6 +2,6 @@
 # Import all strategies here so users can do:
 #   from framework.strategies import EMACrossover, RSIMeanReversion, PriceBreakout
 
-from .crossover import EMACrossover, SMACrossover
-from .mean_reversion import RSIMeanReversion, BollingerMeanReversion
-from .momentum import PriceBreakout
+from .crossover import EMACrossover, SMACrossover, MACDCrossover
+from .mean_reversion import RSIMeanReversion, BollingerMeanReversion, TrendFilteredRSI
+from .momentum import PriceBreakout, ATRBreakout

@@ -78,11 +78,6 @@ services:
       TWS_SETTINGS_PATH: /home/ibgateway/Jts
       JAVA_HEAP_SIZE:    512          # MB — reduce if VPS has limited RAM
 
-    ports:
-      # Bind to 127.0.0.1 only — NEVER expose to 0.0.0.0 on a public VPS
-      - "127.0.0.1:4001:4001"   # live gateway
-      - "127.0.0.1:4002:4002"   # paper gateway
-
     volumes:
       # Persist Gateway settings and login state across container restarts
       - ib-gateway-config:/home/ibgateway/Jts
@@ -101,3 +96,5 @@ services:
 volumes:
   ib-gateway-config:
     driver: local
+
+network_mode: host

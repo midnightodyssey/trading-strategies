@@ -13,7 +13,7 @@ Fails badly in: strong trending markets (keeps buying a falling knife).
 import pandas as pd
 
 from .base import Strategy
-from ..indicators import rsi, bollinger_bands
+from ..indicators import rsi, bollinger_bands, sma
 
 
 class RSIMeanReversion(Strategy):
@@ -104,5 +104,77 @@ class BollingerMeanReversion(Strategy):
         signal[close < lower] =  1.0   # strictly below lower band → long
         signal[close > upper] = -1.0   # strictly above upper band → short
         signal[upper.isna()]  =  0.0   # no signal during warmup
+
+        return signal
+
+
+class TrendFilteredRSI(Strategy):
+    """
+    Trend-Filtered RSI — mean reversion entries only in the trend's direction.
+
+    How it works:
+        Apply RSI mean reversion, but only trade WITH the macro trend:
+
+        Long  (+1): RSI < oversold   AND  close > SMA(trend_period)
+                    (oversold dip inside a confirmed uptrend → buy the pullback)
+        Short (-1): RSI > overbought AND  close < SMA(trend_period)
+                    (overbought bounce inside a confirmed downtrend → sell the pop)
+        Flat  (0):  RSI extreme but price is on the WRONG side of the trend
+                    (don't buy oversold in a downtrend — that's a falling knife)
+
+    Why filter by trend?
+        Unfiltered RSI mean reversion is one of the most dangerous systems in
+        bear markets. RSI can stay below 30 for months during a genuine selloff,
+        generating repeated long signals that all lose money.
+
+        The SMA(200) filter solves this. Price above SMA(200) = uptrend, so we
+        only accept long (buy-dip) signals. Price below SMA(200) = downtrend,
+        so we only accept short (sell-pop) signals.
+
+        This is known as the "RSI pullback in trend" strategy — arguably the
+        most widely taught RSI application among professional discretionary
+        traders. Larry Connors documented the long-only version extensively.
+
+    Typical behaviour:
+        - Far fewer trades than raw RSI (most oversold signals are in downtrends
+          and get filtered out, and vice versa)
+        - Much higher win rate on the trades that do fire
+        - Worst case: a strong trending market never reaches the RSI threshold,
+          so the strategy stays flat and misses the move (opportunity cost only)
+
+    Args:
+        rsi_period:   RSI lookback (default 14 — Wilder's original)
+        oversold:     long entry threshold (default 30)
+        overbought:   short entry threshold (default 70)
+        trend_period: SMA period for macro trend filter (default 200)
+    """
+
+    def __init__(
+        self,
+        rsi_period:   int   = 14,
+        oversold:     float = 30.0,
+        overbought:   float = 70.0,
+        trend_period: int   = 200,
+    ):
+        self.rsi_period   = rsi_period
+        self.oversold     = oversold
+        self.overbought   = overbought
+        self.trend_period = trend_period
+
+    def generate_signals(self, df: pd.DataFrame) -> pd.Series:
+        rsi_vals = rsi(df["Close"], self.rsi_period)
+        trend_ma = sma(df["Close"], self.trend_period)
+        close    = df["Close"]
+
+        signal = pd.Series(0.0, index=df.index)
+
+        # Long: oversold dip in an uptrend
+        signal[(rsi_vals < self.oversold)   & (close > trend_ma)] =  1.0
+
+        # Short: overbought bounce in a downtrend
+        signal[(rsi_vals > self.overbought) & (close < trend_ma)] = -1.0
+
+        # Zero during warmup (whichever indicator needs more history)
+        signal[rsi_vals.isna() | trend_ma.isna()] = 0.0
 
         return signal

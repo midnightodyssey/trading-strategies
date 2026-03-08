@@ -15,7 +15,7 @@ SMA reacts slower (fewer trades, smoother signals).
 import pandas as pd
 
 from .base import Strategy
-from ..indicators import ema, sma
+from ..indicators import ema, sma, macd
 
 
 class EMACrossover(Strategy):
@@ -94,5 +94,61 @@ class SMACrossover(Strategy):
         signal[fast_sma > slow_sma] =  1.0
         signal[fast_sma < slow_sma] = -1.0
         signal[fast_sma.isna() | slow_sma.isna()] = 0.0  # no signal during warmup
+
+        return signal
+
+
+class MACDCrossover(Strategy):
+    """
+    MACD Crossover — the signal-line cross as a momentum trigger.
+
+    How it works:
+        MACD line   = EMA(fast) − EMA(slow)        [default: 12 − 26]
+        Signal line = EMA(MACD line, signal_period) [default: 9-period EMA]
+
+        MACD line > signal line → bullish momentum building → long
+        MACD line < signal line → bearish momentum building → short
+        Signal line NaN         → insufficient history → flat
+
+    How this differs from EMACrossover:
+        EMACrossover signals when fast price EMA crosses slow price EMA.
+        MACDCrossover signals when the MACD line (already a crossover)
+        crosses its own signal line — a second-order smoothing. This
+        double-smoothing reduces whipsaws at the cost of extra lag.
+
+        The MACD histogram (MACD − signal) crossing zero is exactly
+        the same event as the MACD/signal crossover — same signal,
+        different visualisation.
+
+    Default parameters (12/26/9):
+        Gerald Appel's original 1979 settings. They have been studied
+        longer than any other technical indicator and remain the most
+        widely quoted on institutional desks. Rarely needs changing.
+
+    Weaknesses:
+        - Still lags: you catch the move after it starts, not at the turn
+        - In sideways markets, oscillates around zero → frequent whipsaws
+        - The 26-bar slow EMA needs ~52 bars before it stabilises
+
+    Args:
+        fast:          fast EMA period (default 12)
+        slow:          slow EMA period (default 26)
+        signal_period: signal line EMA period (default 9)
+    """
+
+    def __init__(self, fast: int = 12, slow: int = 26, signal_period: int = 9):
+        self.fast          = fast
+        self.slow          = slow
+        self.signal_period = signal_period
+
+    def generate_signals(self, df: pd.DataFrame) -> pd.Series:
+        macd_line, signal_line, _ = macd(
+            df["Close"], self.fast, self.slow, self.signal_period
+        )
+
+        signal = pd.Series(0.0, index=df.index)
+        signal[macd_line > signal_line] =  1.0
+        signal[macd_line < signal_line] = -1.0
+        signal[signal_line.isna()]      =  0.0  # no signal during warmup
 
         return signal
