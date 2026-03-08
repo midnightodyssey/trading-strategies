@@ -12,6 +12,7 @@ import yaml
 DEFAULT_BASE_CONFIG = Path('runner_config.yaml')
 DEFAULT_SELECTED = Path('generated/selected_strategies.yaml')
 DEFAULT_RESOLVED_CONFIG = Path('generated/runner_config.auto.yaml')
+DEFAULT_MANUAL_OVERRIDE = Path('generated/manual_override.yaml')
 DEFAULT_PYTHON = sys.executable
 
 
@@ -25,6 +26,8 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument('--base-config', default=str(DEFAULT_BASE_CONFIG))
     p.add_argument('--selected-output', default=str(DEFAULT_SELECTED))
     p.add_argument('--resolved-config', default=str(DEFAULT_RESOLVED_CONFIG))
+    p.add_argument('--manual-override', default=str(DEFAULT_MANUAL_OVERRIDE))
+    p.add_argument('--ignore-manual-override', action='store_true')
 
     p.add_argument('--skip-backtest', action='store_true')
     p.add_argument('--skip-selection', action='store_true')
@@ -70,34 +73,151 @@ def _load_yaml(path: Path) -> dict[str, Any]:
     return data if isinstance(data, dict) else {}
 
 
-def _build_resolved_config(base_cfg: dict[str, Any], selected_payload: dict[str, Any]) -> dict[str, Any]:
-    selected = selected_payload.get('selected_strategies', [])
-    if not isinstance(selected, list) or not selected:
-        raise ValueError('selected_strategies is empty; nothing to run.')
+def _validate_strategy_list(items: Any) -> list[dict[str, Any]]:
+    if not isinstance(items, list):
+        return []
 
-    strategies: list[dict[str, Any]] = []
-    for item in selected:
+    out: list[dict[str, Any]] = []
+    for item in items:
         if not isinstance(item, dict):
             continue
         name = item.get('name')
         if not name:
             continue
         params = item.get('params') or {}
-        strategies.append({'name': str(name), 'params': dict(params)})
+        out.append({'name': str(name), 'params': dict(params)})
+    return out
 
-    if not strategies:
-        raise ValueError('No valid strategies found in selected_strategies payload.')
 
-    out = dict(base_cfg)
-    out['strategies'] = strategies
+def _apply_manual_override(
+    base_cfg: dict[str, Any],
+    selected_payload: dict[str, Any],
+    manual_override: dict[str, Any] | None,
+) -> tuple[list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
+    auto_strategies = _validate_strategy_list(selected_payload.get('selected_strategies', []))
+    if not auto_strategies:
+        raise ValueError('selected_strategies is empty; nothing to run.')
 
-    out['auto_selection'] = {
+    selected_allocations = selected_payload.get('selected_allocations', [])
+    if not isinstance(selected_allocations, list):
+        selected_allocations = []
+
+    auto_meta = {
         'enabled': True,
         'source_run_id': selected_payload.get('source', {}).get('run_id'),
         'selection_rules': selected_payload.get('selection_rules', {}),
-        'selected_count': len(strategies),
+        'selection_mode': selected_payload.get('selection_mode'),
+        'risk_budget': selected_payload.get('risk_budget', {}),
+        'selected_count': len(auto_strategies),
     }
+
+    override_meta = {
+        'enabled': False,
+        'applied': False,
+        'mode': None,
+        'source': None,
+        'notes': None,
+    }
+
+    if not manual_override:
+        return auto_strategies, auto_meta, override_meta
+
+    enabled = bool(manual_override.get('enabled', False))
+    if not enabled:
+        return auto_strategies, auto_meta, override_meta
+
+    mode = str(manual_override.get('mode', 'replace')).lower()
+    manual_strategies = _validate_strategy_list(manual_override.get('strategies', []))
+
+    if not manual_strategies:
+        raise ValueError('manual override is enabled but contains no valid strategies.')
+
+    if mode == 'append':
+        seen = {s['name'] for s in auto_strategies}
+        merged = list(auto_strategies)
+        for s in manual_strategies:
+            if s['name'] in seen:
+                continue
+            merged.append(s)
+            seen.add(s['name'])
+        final_strategies = merged
+    else:
+        mode = 'replace'
+        final_strategies = manual_strategies
+
+    manual_allocations = manual_override.get('selected_allocations', [])
+    if isinstance(manual_allocations, list) and manual_allocations:
+        selected_allocations = manual_allocations
+
+    override_meta = {
+        'enabled': True,
+        'applied': True,
+        'mode': mode,
+        'source': str(manual_override.get('source', 'manual_override_file')),
+        'notes': manual_override.get('notes'),
+    }
+
+    return final_strategies, auto_meta, {
+        **override_meta,
+        'selected_allocations': selected_allocations,
+    }
+
+
+def _build_resolved_config(
+    base_cfg: dict[str, Any],
+    selected_payload: dict[str, Any],
+    manual_override: dict[str, Any] | None,
+) -> dict[str, Any]:
+    out = dict(base_cfg)
+
+    final_strategies, auto_meta, override_meta = _apply_manual_override(
+        base_cfg=base_cfg,
+        selected_payload=selected_payload,
+        manual_override=manual_override,
+    )
+
+    out['strategies'] = final_strategies
+
+    selected_allocations = selected_payload.get('selected_allocations', [])
+    if isinstance(override_meta, dict) and override_meta.get('selected_allocations'):
+        selected_allocations = override_meta.get('selected_allocations')
+
+    out['execution_plan'] = {
+        'source': 'auto_selection',
+        'generated_at_utc': selected_payload.get('generated_at_utc'),
+        'selected_allocations': selected_allocations,
+    }
+
+    out['auto_selection'] = auto_meta
+    out['manual_override'] = {
+        'enabled': bool(override_meta.get('enabled', False)),
+        'applied': bool(override_meta.get('applied', False)),
+        'mode': override_meta.get('mode'),
+        'source': override_meta.get('source'),
+        'notes': override_meta.get('notes'),
+    }
+
     return out
+
+
+def _write_manual_override_template(path: Path) -> None:
+    if path.exists():
+        return
+
+    template = {
+        'enabled': False,
+        'mode': 'replace',
+        'source': 'manual',
+        'notes': 'Set enabled=true to override auto-selected strategies.',
+        'strategies': [
+            {'name': 'EMACrossover', 'params': {'fast': 12, 'slow': 26}},
+            {'name': 'MACDCrossover', 'params': {'fast': 12, 'slow': 26, 'signal_period': 9}},
+        ],
+        'selected_allocations': [],
+    }
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(yaml.safe_dump(template, sort_keys=False), encoding='utf-8')
 
 
 def _resolve_execution(args: argparse.Namespace) -> tuple[bool, bool, bool]:
@@ -124,6 +244,7 @@ def main() -> None:
     base_cfg_path = (repo_root / args.base_config).resolve()
     selected_path = (repo_root / args.selected_output).resolve()
     resolved_cfg_path = (repo_root / args.resolved_config).resolve()
+    manual_override_path = (repo_root / args.manual_override).resolve()
 
     do_backtest, do_selection, do_runner = _resolve_execution(args)
 
@@ -152,7 +273,17 @@ def main() -> None:
     if do_selection or do_backtest:
         base_cfg = _load_yaml(base_cfg_path)
         selected_payload = _load_yaml(selected_path)
-        resolved_cfg = _build_resolved_config(base_cfg, selected_payload)
+
+        _write_manual_override_template(manual_override_path)
+        manual_override = None
+        if not args.ignore_manual_override and manual_override_path.exists():
+            manual_override = _load_yaml(manual_override_path)
+
+        resolved_cfg = _build_resolved_config(
+            base_cfg=base_cfg,
+            selected_payload=selected_payload,
+            manual_override=manual_override,
+        )
 
         resolved_cfg_path.parent.mkdir(parents=True, exist_ok=True)
         resolved_cfg_path.write_text(
@@ -160,6 +291,7 @@ def main() -> None:
             encoding='utf-8',
         )
         print(f"\n[config] Wrote resolved runner config: {resolved_cfg_path}")
+        print(f"[config] Manual override file: {manual_override_path}")
 
     if do_runner:
         if not resolved_cfg_path.exists():
@@ -182,6 +314,7 @@ def main() -> None:
     print(f'- Base config:      {base_cfg_path}')
     print(f'- Selection output: {selected_path}')
     print(f'- Resolved config:  {resolved_cfg_path}')
+    print(f'- Manual override:  {manual_override_path}')
 
 
 if __name__ == '__main__':

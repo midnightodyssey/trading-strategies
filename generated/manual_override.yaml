@@ -1,0 +1,15 @@
+enabled: false
+mode: replace
+source: manual
+notes: Set enabled=true to override auto-selected strategies.
+strategies:
+- name: EMACrossover
+  params:
+    fast: 12
+    slow: 26
+- name: MACDCrossover
+  params:
+    fast: 12
+    slow: 26
+    signal_period: 9
+selected_allocations: []
