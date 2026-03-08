@@ -1,4 +1,6 @@
-﻿# Automation Jobs
+﻿*Category: Automation*
+
+# Automation Jobs
 
 This repo now includes an automation entrypoint:
 
@@ -70,3 +72,4 @@ CRON_TZ=America/New_York
 # Daily execution (Mon-Fri) at 9:35 AM ET
 35 9 * * 1-5 cd /home/trading/trading-strategies && . .venv/bin/activate && python scripts/automation_jobs.py --job execute >> logs/automation/execute_cron.log 2>&1
 ```
+

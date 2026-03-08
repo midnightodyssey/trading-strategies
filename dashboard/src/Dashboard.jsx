@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+﻿import { useState, useEffect, useCallback, useRef } from "react";
 
-// ─── IMMUTABLE CONSTANTS ──────────────────────────────────────────────────────
+// â”€â”€â”€ IMMUTABLE CONSTANTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const PHASES = [
-  { id: "foundation", label: "Foundation",     icon: "◈", color: "#E8B96A", description: "Market structure, order flow, reading price" },
-  { id: "framework",  label: "Code Framework", icon: "⬡", color: "#6DB8D8", description: "Python library, backtesting engine, indicators" },
-  { id: "strategies", label: "Strategies",     icon: "◉", color: "#7DC87A", description: "Signal models, risk systems & optimisation" },
-  { id: "mastery",    label: "Mastery",         icon: "✦", color: "#B89FD8", description: "Prop firm challenge, live trading & edge refinement", locked: true },
+  { id: "foundation", label: "Foundation",     icon: "â—ˆ", color: "#E8B96A", description: "Market structure, order flow, reading price" },
+  { id: "framework",  label: "Code Framework", icon: "â¬¡", color: "#6DB8D8", description: "Python library, backtesting engine, indicators" },
+  { id: "strategies", label: "Strategies",     icon: "â—‰", color: "#7DC87A", description: "Signal models, risk systems & optimisation" },
+  { id: "mastery",    label: "Mastery",         icon: "âœ¦", color: "#B89FD8", description: "Prop firm challenge, live trading & edge refinement", locked: true },
 ];
 
 const MODULES = {
@@ -30,14 +30,14 @@ const MODULES = {
     { id: "stat_edge",   label: "Statistical Edge",       color: "#7DC87A", items: ["Hypothesis Testing (T-Test, Permutation)", "Monte Carlo Simulation", "Market Regime Detection", "Factor Analysis"] },
   ],
   mastery: [
-    { id: "live_exec",  label: "Prop Firm & Live",     color: "#B89FD8", items: ["Paper Trading — 30 Days (prop firm rules)", "Pass Challenge Phase", "Pass Verification Phase", "Funded Live Execution", "Real-Time Risk Monitoring"] },
+    { id: "live_exec",  label: "Prop Firm & Live",     color: "#B89FD8", items: ["Paper Trading â€” 30 Days (prop firm rules)", "Pass Challenge Phase", "Pass Verification Phase", "Funded Live Execution", "Real-Time Risk Monitoring"] },
     { id: "adv_models", label: "Advanced Models",      color: "#B89FD8", items: ["ML Signal Generation", "NLP Sentiment Analysis", "Options Pricing Models", "High-Frequency Considerations"] },
     { id: "edge",       label: "Edge Refinement",      color: "#B89FD8", items: ["Strategy Decay Detection", "Market Regime Adaptation", "Continuous Improvement Loop"] },
     { id: "pro",        label: "Professional Practice", color: "#B89FD8", items: ["Regulatory & Compliance Basics", "Fund Structure Understanding", "Performance Attribution", "Investor Reporting"] },
   ],
 };
 
-// base = institutional starting level (1–10); modules = which completions drive the bar
+// base = institutional starting level (1â€“10); modules = which completions drive the bar
 const SKILL_MODULE_MAP = [
   { name: "Technical Analysis",    color: "#E8B96A", base: 3, modules: ["structure", "orderflow", "vwap", "tech_strat"] },
   { name: "Quantitative & Coding", color: "#6DB8D8", base: 5, modules: ["indicators", "backtest", "data", "strat_class", "stat_edge"] },
@@ -60,7 +60,7 @@ function computeSkillLevel(skill, completions) {
 const BOOK_DEFS = [
   { title: "Market Wizards",                              author: "Jack Schwager",          category: "Psychology" },
   { title: "Trading in the Zone",                         author: "Mark Douglas",           category: "Psychology" },
-  { title: "Reminiscences of a Stock Operator",           author: "Edwin Lefèvre",          category: "Psychology" },
+  { title: "Reminiscences of a Stock Operator",           author: "Edwin LefÃ¨vre",          category: "Psychology" },
   { title: "Technical Analysis of the Financial Markets", author: "John J. Murphy",         category: "Technical"  },
   { title: "Algorithmic Trading",                         author: "Ernest Chan",            category: "Quant"      },
   { title: "Advances in Financial Machine Learning",      author: "Marcos Lopez de Prado",  category: "Quant"      },
@@ -91,36 +91,37 @@ const MILESTONE_DEFS = [
   { label: "Risk Model Suite Complete",              color: "#7DC87A" },
   { label: "Backtesting Engine v1",                  color: "#6DB8D8" },
   { label: "First Strategy Backtest (10-yr data)",   color: "#6DB8D8" },
-  { label: "Paper Trading — 30-Day Structured Trial", color: "#E8B96A" },
+  { label: "Paper Trading â€” 30-Day Structured Trial", color: "#E8B96A" },
   { label: "Pass Prop Firm Challenge Phase",         color: "#B89FD8" },
   { label: "Pass Prop Firm Verification",            color: "#B89FD8" },
   { label: "First Funded Payout",                    color: "#B89FD8" },
 ];
 
 const NEXT_ACTIONS = [
-  { priority: "HIGH", text: "Build walk-forward validation — your risk/stats background makes this achievable now" },
+  { priority: "HIGH", text: "Build walk-forward validation â€” your risk/stats background makes this achievable now" },
   { priority: "HIGH", text: "Codify your institutional edge: translate put-spread hedging logic into a systematic options screener" },
-  { priority: "HIGH", text: "Paper trade with prop firm rules (1% risk/trade, 4% daily DD, 10% max DD) — apply the same discipline you used on the PM desk" },
-  { priority: "MED",  text: "Read Trading in the Zone ch. 4–8 — psychology is your lowest-rated skill and the hardest to develop" },
-  { priority: "MED",  text: "Implement Greeks (Delta, Gamma, Vega, Theta) in Python — you know the theory, now automate it" },
+  { priority: "HIGH", text: "Paper trade with prop firm rules (1% risk/trade, 4% daily DD, 10% max DD) â€” apply the same discipline you used on the PM desk" },
+  { priority: "MED",  text: "Read Trading in the Zone ch. 4â€“8 â€” psychology is your lowest-rated skill and the hardest to develop" },
+  { priority: "MED",  text: "Implement Greeks (Delta, Gamma, Vega, Theta) in Python â€” you know the theory, now automate it" },
   { priority: "MED",  text: "Research prop firm evaluations that suit systematic/quant traders (FTMO, Topstep, Apex Trader)" },
-  { priority: "LOW",  text: "Build a market regime detector — leverage your multi-asset PM exposure to identify trend vs. mean-reversion environments" },
+  { priority: "LOW",  text: "Build a market regime detector â€” leverage your multi-asset PM exposure to identify trend vs. mean-reversion environments" },
 ];
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-// ─── MARKDOWN RENDERER ────────────────────────────────────────────────────────
+// â”€â”€â”€ MARKDOWN RENDERER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const DOC_CATEGORY_COLOR = {
-  Framework:  "#6DB8D8",   // blue   — core engine (backtest, data, indicators)
-  Strategies: "#7DC87A",   // green  — strategy implementations
-  Risk:       "#E87A7A",   // red    — risk metrics & position sizing
-  Execution:  "#B89FD8",   // purple — OMS, broker, live trading
-  Analysis:   "#E8A86A",   // orange — stat edge, portfolio tools
-  Reference:  "#8896A8",   // grey   — uncategorised
+  Framework:  "#6DB8D8",   // blue   - core engine (backtest, data, indicators)
+  Strategies: "#7DC87A",   // green  - strategy implementations
+  Risk:       "#E87A7A",   // red    - risk metrics & position sizing
+  Execution:  "#B89FD8",   // purple - OMS, broker, live trading
+  Analysis:   "#E8A86A",   // orange - stat edge, portfolio tools
+  Automation: "#5FC9A6",   // teal   - job orchestration, scheduling, operations
+  Reference:  "#8896A8",   // grey   - uncategorised
 };
 
-const DOC_CATEGORY_ORDER = ["Framework", "Strategies", "Risk", "Execution", "Analysis", "Reference"];
+const DOC_CATEGORY_ORDER = ["Framework", "Strategies", "Risk", "Execution", "Analysis", "Automation", "Reference"];
 
 function MarkdownDoc({ content }) {
   const lines = content.split("\n");
@@ -182,7 +183,7 @@ function MarkdownDoc({ content }) {
           {items.map((item, j) => (
             <li key={j} style={{ fontSize: 12, color: "#8896A8", lineHeight: 1.6, marginBottom: 3,
               display: "flex", gap: 8, alignItems: "flex-start" }}>
-              <span style={{ color: "#3A4A5A", flexShrink: 0 }}>›</span>
+              <span style={{ color: "#3A4A5A", flexShrink: 0 }}>â€º</span>
               <InlineMarkdown text={item} />
             </li>
           ))}
@@ -209,7 +210,7 @@ function MarkdownDoc({ content }) {
 
 function InlineMarkdown({ text }) {
   // handle **bold**, `code`, and plain text
-  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
+  const parts = text.split(/(\[[^\]]+\]\([^\)]+\)|`[^`]+`|\*\*[^*]+\*\*)/g);
   return (
     <>
       {parts.map((part, i) => {
@@ -218,34 +219,40 @@ function InlineMarkdown({ text }) {
         if (part.startsWith("`") && part.endsWith("`"))
           return <code key={i} style={{ background: "#060A12", color: "#7DC87A", fontFamily: "monospace",
             fontSize: 11, padding: "1px 5px", borderRadius: 3 }}>{part.slice(1, -1)}</code>;
+        const linkMatch = part.match(/^\[([^\]]+)\]\(([^\)]+)\)$/);
+        if (linkMatch) {
+          const label = linkMatch[1];
+          const href = linkMatch[2];
+          return <a key={i} href={href} target="_blank" rel="noreferrer" style={{ color: "#6DB8D8", textDecoration: "underline" }}>{label}</a>;
+        }
         return part;
       })}
     </>
   );
 }
 
-// ─── DEFAULT STATE ────────────────────────────────────────────────────────────
+// â”€â”€â”€ DEFAULT STATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const DEFAULT_STATE = {
   completions: {
-    // ── Post-quiz calibration (Mar 2026) ──────────────────────────────────
-    // All items reflect actual tested knowledge — institutional background
+    // â”€â”€ Post-quiz calibration (Mar 2026) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // All items reflect actual tested knowledge â€” institutional background
     // provides context and accelerates learning, but does not substitute
     // for systematic study of each framework item below.
-    structure:   [false, false, false, false],   // Q1–Q4: HH/HL, CHoCH/BOS, Premium/Discount, Liquidity Pools — all incomplete
-    orderflow:   [false, false, false, false],   // Q5–Q8: CVD, Footprint, Imbalances, Absorption — all incomplete
-    vwap:        [false, false, false, false],   // Q9–Q12: Anchored VWAP, VAH/VAL/POC, Nodes, SD Bands — all incomplete
-    psych_f:     [false, false, false, false],   // Q13–Q16: Douglas mindset, Emotional control, Routine, Review — all incomplete
-    indicators:  [false, false, false, false, false, false, false],  // Q17–Q23: SMA/EMA/WMA/RSI/MACD/BB/ATR — all incomplete
-    backtest:    [false, false, false, false, false],  // Q24–Q28: Engine, Result class, Slippage, Multi-asset, Walk-forward — incomplete
-    risk:        [false, false, false, false, false, false],   // Q29–Q34: Sharpe/Sortino/MDD/Calmar/VaR/CVaR — all incomplete
-    data:        [false, false, false, false],   // Q35–Q38: Acquisition, Real-time, Cleaning, Feature engineering — incomplete
-    execution:   [false, false, false],          // Q39–Q41: Broker API, OMS, Live P&L — all incomplete
-    strat_class: [false, false, false, false, false],  // Q42–Q46: Base class, SMA cross, Mean rev, Momentum, Breakout — incomplete
-    tech_strat:  [false, false, false, false],   // Q47–Q50: EMA trend, RSI MR, MACD div, MTF confluence — incomplete
-    portfolio:   [false, false, false, false],   // Q51–Q54: MVO, Risk Parity, Kelly, Correlation — incomplete
-    stat_edge:   [false, false, false, false],   // Q55–Q58: Hypothesis test, Monte Carlo, Regime, Factor analysis — incomplete
-    // Mastery — not started
+    structure:   [false, false, false, false],   // Q1â€“Q4: HH/HL, CHoCH/BOS, Premium/Discount, Liquidity Pools â€” all incomplete
+    orderflow:   [false, false, false, false],   // Q5â€“Q8: CVD, Footprint, Imbalances, Absorption â€” all incomplete
+    vwap:        [false, false, false, false],   // Q9â€“Q12: Anchored VWAP, VAH/VAL/POC, Nodes, SD Bands â€” all incomplete
+    psych_f:     [false, false, false, false],   // Q13â€“Q16: Douglas mindset, Emotional control, Routine, Review â€” all incomplete
+    indicators:  [false, false, false, false, false, false, false],  // Q17â€“Q23: SMA/EMA/WMA/RSI/MACD/BB/ATR â€” all incomplete
+    backtest:    [false, false, false, false, false],  // Q24â€“Q28: Engine, Result class, Slippage, Multi-asset, Walk-forward â€” incomplete
+    risk:        [false, false, false, false, false, false],   // Q29â€“Q34: Sharpe/Sortino/MDD/Calmar/VaR/CVaR â€” all incomplete
+    data:        [false, false, false, false],   // Q35â€“Q38: Acquisition, Real-time, Cleaning, Feature engineering â€” incomplete
+    execution:   [false, false, false],          // Q39â€“Q41: Broker API, OMS, Live P&L â€” all incomplete
+    strat_class: [false, false, false, false, false],  // Q42â€“Q46: Base class, SMA cross, Mean rev, Momentum, Breakout â€” incomplete
+    tech_strat:  [false, false, false, false],   // Q47â€“Q50: EMA trend, RSI MR, MACD div, MTF confluence â€” incomplete
+    portfolio:   [false, false, false, false],   // Q51â€“Q54: MVO, Risk Parity, Kelly, Correlation â€” incomplete
+    stat_edge:   [false, false, false, false],   // Q55â€“Q58: Hypothesis test, Monte Carlo, Regime, Factor analysis â€” incomplete
+    // Mastery â€” not started
     live_exec:   [false, false, false, false, false],
     adv_models:  [false, false, false, false],
     edge:        [false, false, false],
@@ -254,9 +261,9 @@ const DEFAULT_STATE = {
   skills: {
     // Recalibrated: 3yr institutional background (options desk, multi-asset PM, equities financing)
     "Technical Analysis":    5,   // Research desk exposure; not systematic TA, but not a beginner
-    "Quantitative & Coding": 6,   // Intermediate Python — correct
+    "Quantitative & Coding": 6,   // Intermediate Python â€” correct
     "Risk Management":       8,   // Ran hedge book & exposure mgmt for pension fund clients
-    "Trading Psychology":    2,   // Self-rated weakest — correct
+    "Trading Psychology":    2,   // Self-rated weakest â€” correct
     "Market Knowledge":      8,   // Multi-asset: equities, options, FX, futures, credit, equities financing
     "Execution & Process":   5,   // Supported real institutional execution; understands OMS/process
   },
@@ -296,7 +303,7 @@ function loadState() {
   } catch { return DEFAULT_STATE; }
 }
 
-// ─── SMALL COMPONENTS ─────────────────────────────────────────────────────────
+// â”€â”€â”€ SMALL COMPONENTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function Ring({ pct, color, size = 52, stroke = 4 }) {
   const r    = (size - stroke * 2) / 2;
@@ -367,7 +374,7 @@ function ModuleBar({ mod, completions, onToggle }) {
             </div>
           </div>
           <span style={{ fontSize: 10, color: "#4A5568", transform: open ? "rotate(180deg)" : "none",
-            transition: "transform 0.2s", marginLeft: 4 }}>▼</span>
+            transition: "transform 0.2s", marginLeft: 4 }}>â–¼</span>
         </div>
       </div>
       {open && (
@@ -383,7 +390,7 @@ function ModuleBar({ mod, completions, onToggle }) {
                 border: `1.5px solid ${completions[i] ? mod.color : "#3A4A5A"}`,
                 background: completions[i] ? mod.color + "33" : "transparent",
                 display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s" }}>
-                {completions[i] && <span style={{ fontSize: 8, color: mod.color, fontWeight: 700 }}>✓</span>}
+                {completions[i] && <span style={{ fontSize: 8, color: mod.color, fontWeight: 700 }}>âœ“</span>}
               </div>
               <span style={{ fontSize: 12, color: completions[i] ? mod.color : "#5A6A7A",
                 transition: "color 0.15s" }}>{item}</span>
@@ -439,7 +446,7 @@ const MiniBtn = ({ onClick, children }) => (
   }}>{children}</button>
 );
 
-// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ DASHBOARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function Dashboard() {
   const [activePhase, setActivePhase]       = useState("framework");
@@ -455,7 +462,7 @@ export default function Dashboard() {
   useEffect(() => { setTimeout(() => setMounted(true), 100); }, []);
   useEffect(() => { localStorage.setItem("trading-career-v4", JSON.stringify(state)); }, [state]);
 
-  // fetch docs — re-fetches on each panel open so new files are picked up automatically
+  // fetch docs â€” re-fetches on each panel open so new files are picked up automatically
   useEffect(() => {
     const loadDocs = async () => {
       try {
@@ -488,7 +495,7 @@ export default function Dashboard() {
     return () => window.removeEventListener("keydown", handler);
   }, [selectedDoc]);
 
-  // ── computed ──────────────────────────────────────────────────────────────
+  // â”€â”€ computed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const calcProgress = useCallback((phaseId) => {
     const mods = MODULES[phaseId] || [];
     if (!mods.length) return 0;
@@ -504,7 +511,7 @@ export default function Dashboard() {
     PHASES.filter(p => !p.locked).length
   );
 
-  // ── state updaters ────────────────────────────────────────────────────────
+  // â”€â”€ state updaters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const toggleItem = useCallback((modId, idx) => {
     setState(s => {
       const arr = [...(s.completions[modId] || [])];
@@ -542,7 +549,7 @@ export default function Dashboard() {
     setEditTargetVal("");
   }, [editTargetVal]);
 
-  // ── derived values ────────────────────────────────────────────────────────
+  // â”€â”€ derived values â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const filteredMods    = MODULES[activePhase] || [];
   const activePhaseData = PHASES.find(p => p.id === activePhase);
   const booksRead       = BOOK_DEFS.filter(b => state.books[b.title] === "read").length;
@@ -571,13 +578,13 @@ export default function Dashboard() {
         button { transition: opacity 0.15s; } button:hover { opacity: 0.7; }
       `}</style>
 
-      {/* ── HEADER ── */}
+      {/* â”€â”€ HEADER â”€â”€ */}
       <div style={{ borderBottom: "1px solid #1E2535", padding: "20px 28px 0" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
             <div>
               <div style={{ fontSize: 11, letterSpacing: "0.15em", color: "#5A6A80", textTransform: "uppercase", marginBottom: 5, fontWeight: 600 }}>
-                Harrison Seaborn · Goal: Prop Firm Funded Trader
+                Harrison Seaborn Â· Goal: Prop Firm Funded Trader
               </div>
               <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, color: "#F0F2F8", fontWeight: 600 }}>
                 Career Progression Dashboard
@@ -591,7 +598,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* ── TAB NAV ── */}
+          {/* â”€â”€ TAB NAV â”€â”€ */}
           <div style={{ display: "flex", gap: 0 }}>
             {TABS.map(tab => {
               const active = activeTab === tab.id;
@@ -614,12 +621,12 @@ export default function Dashboard() {
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 28px" }}>
 
-        {/* ══════════════════════════════════════════════════════════════════
+        {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
             TAB: OVERVIEW
-        ══════════════════════════════════════════════════════════════════ */}
+        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
         {activeTab === "overview" && (
           <div>
-            {/* Phase summary cards — clicking also switches to Curriculum */}
+            {/* Phase summary cards â€” clicking also switches to Curriculum */}
             <div style={{ marginBottom: 28 }}>
               <SectionLabel>Learning Phases</SectionLabel>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
@@ -662,7 +669,7 @@ export default function Dashboard() {
                         border: `1.5px solid ${done ? m.color : "#2A3A4A"}`,
                         background: done ? m.color + "33" : "transparent",
                         display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
-                        {done && <span style={{ fontSize: 8, color: m.color }}>✓</span>}
+                        {done && <span style={{ fontSize: 8, color: m.color }}>âœ“</span>}
                       </div>
                       <span style={{ fontSize: 12, lineHeight: 1.3,
                         color: done ? "#5A7A5A" : "#6A7A8A",
@@ -676,14 +683,14 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ══════════════════════════════════════════════════════════════════
+        {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
             TAB: CURRICULUM
-        ══════════════════════════════════════════════════════════════════ */}
+        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
         {activeTab === "curriculum" && (
           <div>
             {/* Phase selector */}
             <div style={{ marginBottom: 24 }}>
-              <SectionLabel>Learning Phases — click to switch</SectionLabel>
+              <SectionLabel>Learning Phases â€” click to switch</SectionLabel>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
                 {PHASES.map(p => (
                   <PhaseCard key={p.id} phase={p} active={activePhase === p.id}
@@ -696,13 +703,13 @@ export default function Dashboard() {
               {/* Modules */}
               <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "20px 18px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <SectionLabel>{activePhaseData?.label} · Modules</SectionLabel>
+                  <SectionLabel>{activePhaseData?.label} Â· Modules</SectionLabel>
                   <div style={{ fontSize: 12, color: activePhaseData?.color, fontWeight: 700 }}>
                     {filteredMods.reduce((s, m) => s + (state.completions[m.id] || []).filter(Boolean).length, 0)} /
                     {filteredMods.reduce((s, m) => s + m.items.length, 0)} complete
                   </div>
                 </div>
-                <Hint>EXPAND A MODULE · CLICK ITEMS TO MARK COMPLETE</Hint>
+                <Hint>EXPAND A MODULE Â· CLICK ITEMS TO MARK COMPLETE</Hint>
                 {filteredMods.map(m => (
                   <ModuleBar key={m.id} mod={m}
                     completions={state.completions[m.id] || m.items.map(() => false)}
@@ -713,7 +720,7 @@ export default function Dashboard() {
               {/* Skill Proficiency */}
               <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "20px 18px" }}>
                 <SectionLabel>Skill Proficiency</SectionLabel>
-                <Hint>DERIVED FROM MODULE COMPLETION · BASE FROM INSTITUTIONAL BACKGROUND</Hint>
+                <Hint>DERIVED FROM MODULE COMPLETION Â· BASE FROM INSTITUTIONAL BACKGROUND</Hint>
                 {SKILL_MODULE_MAP.map(skill => (
                   <SkillRow key={skill.name} skill={skill}
                     level={computeSkillLevel(skill, state.completions)}
@@ -724,9 +731,9 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ══════════════════════════════════════════════════════════════════
+        {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
             TAB: RESOURCES
-        ══════════════════════════════════════════════════════════════════ */}
+        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
         {activeTab === "resources" && (
           <div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, marginBottom: 18 }}>
@@ -735,12 +742,12 @@ export default function Dashboard() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                   <SectionLabel>Essential Reading</SectionLabel>
                   <div style={{ display: "flex", gap: 10, fontSize: 10 }}>
-                    <span style={{ color: "#7DC87A" }}>● {booksRead} read</span>
-                    <span style={{ color: "#E8B96A" }}>● {booksReading} reading</span>
-                    <span style={{ color: "#3A4A5A" }}>● {BOOK_DEFS.length - booksRead - booksReading} queued</span>
+                    <span style={{ color: "#7DC87A" }}>â— {booksRead} read</span>
+                    <span style={{ color: "#E8B96A" }}>â— {booksReading} reading</span>
+                    <span style={{ color: "#3A4A5A" }}>â— {BOOK_DEFS.length - booksRead - booksReading} queued</span>
                   </div>
                 </div>
-                <Hint>CLICK DOT TO CYCLE: QUEUED → READING → READ</Hint>
+                <Hint>CLICK DOT TO CYCLE: QUEUED â†’ READING â†’ READ</Hint>
                 {BOOK_DEFS.map((book, i) => {
                   const status   = state.books[book.title] || "unread";
                   const dotColor = status === "read" ? "#7DC87A" : status === "reading" ? "#E8B96A" : "#252D3D";
@@ -767,7 +774,7 @@ export default function Dashboard() {
                   <SectionLabel>Video Library</SectionLabel>
                   <div style={{ fontSize: 12, color: "#E8B96A", fontFamily: "monospace", fontWeight: 700 }}>{totalVideos} saved</div>
                 </div>
-                <Hint>USE + / − TO UPDATE COUNTS</Hint>
+                <Hint>USE + / âˆ’ TO UPDATE COUNTS</Hint>
                 {VIDEO_CAT_DEFS.map(cat => {
                   const count = state.videos[cat.label] || 0;
                   return (
@@ -775,7 +782,7 @@ export default function Dashboard() {
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
                         <span style={{ fontSize: 12, color: "#A0AABA" }}>{cat.label}</span>
                         <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                          <MiniBtn onClick={() => adjustVideo(cat.label, -1)}>−</MiniBtn>
+                          <MiniBtn onClick={() => adjustVideo(cat.label, -1)}>âˆ’</MiniBtn>
                           <span style={{ fontSize: 12, color: cat.color, fontFamily: "monospace",
                             fontWeight: 700, minWidth: 22, textAlign: "center" }}>{count}</span>
                           <MiniBtn onClick={() => adjustVideo(cat.label, 1)}>+</MiniBtn>
@@ -793,7 +800,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Reference Docs — grouped by category */}
+            {/* Reference Docs â€” grouped by category */}
             {docs.length > 0 && (() => {
               const grouped = DOC_CATEGORY_ORDER.reduce((acc, cat) => {
                 const catDocs = docs.filter(d => d.category === cat);
@@ -805,7 +812,7 @@ export default function Dashboard() {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                     <SectionLabel>Reference Docs</SectionLabel>
                     <span style={{ fontSize: 10, color: "#3A4A5A", fontFamily: "monospace" }}>
-                      {docs.length} docs · {grouped.length} categories · auto-synced
+                      {docs.length} docs Â· {grouped.length} categories Â· auto-synced
                     </span>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -834,7 +841,7 @@ export default function Dashboard() {
                                 <div style={{ fontSize: 12, color: "#CDD5E0", fontWeight: 600,
                                   lineHeight: 1.35, marginBottom: 6 }}>{doc.title}</div>
                                 <div style={{ fontSize: 10, color: "#3A4A5A" }}>
-                                  {doc.content.split("\n").filter(l => l.trim()).length} lines · click to read
+                                  {doc.content.split("\n").filter(l => l.trim()).length} lines Â· click to read
                                 </div>
                               </div>
                             ))}
@@ -849,9 +856,9 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ══════════════════════════════════════════════════════════════════
+        {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
             TAB: PERFORMANCE
-        ══════════════════════════════════════════════════════════════════ */}
+        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
         {activeTab === "performance" && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
 
@@ -889,7 +896,7 @@ export default function Dashboard() {
                             {current}{item.unit}
                           </span>
                         )}
-                        <span style={{ fontSize: 11, color: "#3A4A5A" }}>→ {item.target}{item.unit}</span>
+                        <span style={{ fontSize: 11, color: "#3A4A5A" }}>â†’ {item.target}{item.unit}</span>
                       </div>
                     </div>
                     <div style={{ height: 5, background: "#1E2535", borderRadius: 4, overflow: "hidden" }}>
@@ -906,7 +913,7 @@ export default function Dashboard() {
             {/* Weekly Activity */}
             <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "20px 18px" }}>
               <SectionLabel>Weekly Activity</SectionLabel>
-              <Hint>CLICK BAR +1 · RIGHT-CLICK −1</Hint>
+              <Hint>CLICK BAR +1 Â· RIGHT-CLICK âˆ’1</Hint>
               <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 120, marginTop: 12 }}>
                 {DAYS.map(day => {
                   const val  = state.activity[day] || 0;
@@ -915,7 +922,7 @@ export default function Dashboard() {
                     <div key={day} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}
                       onContextMenu={e => { e.preventDefault(); adjustActivity(day, -1); }}>
                       <div onClick={() => adjustActivity(day, 1)}
-                        title={`${val} sessions — click +1, right-click −1`}
+                        title={`${val} sessions â€” click +1, right-click âˆ’1`}
                         style={{ width: "100%", borderRadius: 4,
                           height: `${(val / 10) * 90}px`, minHeight: 4,
                           background: peak ? "#E8B96A" : "#1E2A3D",
@@ -933,11 +940,11 @@ export default function Dashboard() {
         )}
 
         <div style={{ marginTop: 32, textAlign: "center", fontSize: 10, color: "#1E2535", letterSpacing: "0.15em", fontWeight: 600 }}>
-          MIDNIGHTODYSSEY · QUANT FRAMEWORK v0.1 · CAREER PROGRESSION TRACKER
+          MIDNIGHTODYSSEY Â· QUANT FRAMEWORK v0.1 Â· CAREER PROGRESSION TRACKER
         </div>
       </div>
 
-      {/* ── DOC READER MODAL ── */}
+      {/* â”€â”€ DOC READER MODAL â”€â”€ */}
       {selectedDoc && (
         <div onClick={e => e.target === e.currentTarget && setSelectedDoc(null)}
           style={{ position: "fixed", inset: 0, background: "rgba(4,8,16,0.88)",
@@ -959,7 +966,7 @@ export default function Dashboard() {
               <button onClick={() => setSelectedDoc(null)}
                 style={{ background: "#1E2535", border: "none", borderRadius: 6, color: "#5A6A7A",
                   width: 28, height: 28, fontSize: 16, cursor: "pointer", flexShrink: 0,
-                  display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                  display: "flex", alignItems: "center", justifyContent: "center" }}>Ã—</button>
             </div>
             <div style={{ borderTop: "1px solid #1E2535", paddingTop: 20 }}>
               <MarkdownDoc content={selectedDoc.content} />
@@ -970,3 +977,4 @@ export default function Dashboard() {
     </div>
   );
 }
+
