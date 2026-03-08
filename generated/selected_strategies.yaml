@@ -1,15 +1,15 @@
 schema_version: 1
-generated_at_utc: '2026-03-08T06:24:30.095614+00:00'
+generated_at_utc: '2026-03-08T06:32:48.896958+00:00'
 source:
   run_id: '20260308_055045'
   run_dir: artifacts\backtests\20260308_055045
   summary_csv: artifacts\backtests\20260308_055045\strategy_summary.csv
-  runner_config: runner_config.yaml
+  runner_config: C:\Users\harrison.seaborn\Documents\trading-strategies\trading-strategies\runner_config.yaml
 selection_rules:
   top_n: 3
   min_symbols: 5
   min_sharpe: 0.0
-  min_trades: 50
+  min_trades: 50.0
   max_drawdown_abs: 0.35
   fallback_to_top_n_if_empty: true
 selected_strategies:
