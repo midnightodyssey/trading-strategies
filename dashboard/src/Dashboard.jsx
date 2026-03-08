@@ -3,10 +3,10 @@
 // â”€â”€â”€ IMMUTABLE CONSTANTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const PHASES = [
-  { id: "foundation", label: "Foundation",     icon: "â—ˆ", color: "#E8B96A", description: "Market structure, order flow, reading price" },
-  { id: "framework",  label: "Code Framework", icon: "â¬¡", color: "#6DB8D8", description: "Python library, backtesting engine, indicators" },
-  { id: "strategies", label: "Strategies",     icon: "â—‰", color: "#7DC87A", description: "Signal models, risk systems & optimisation" },
-  { id: "mastery",    label: "Mastery",         icon: "âœ¦", color: "#B89FD8", description: "Prop firm challenge, live trading & edge refinement", locked: true },
+  { id: "foundation", label: "Foundation",     icon: "*", color: "#E8B96A", description: "Market structure, order flow, reading price" },
+  { id: "framework",  label: "Code Framework", icon: "[]", color: "#6DB8D8", description: "Python library, backtesting engine, indicators" },
+  { id: "strategies", label: "Strategies",     icon: "o", color: "#7DC87A", description: "Signal models, risk systems & optimisation" },
+  { id: "mastery",    label: "Mastery",         icon: "+", color: "#B89FD8", description: "Prop firm challenge, live trading & edge refinement", locked: true },
 ];
 
 const MODULES = {
@@ -30,7 +30,7 @@ const MODULES = {
     { id: "stat_edge",   label: "Statistical Edge",       color: "#7DC87A", items: ["Hypothesis Testing (T-Test, Permutation)", "Monte Carlo Simulation", "Market Regime Detection", "Factor Analysis"] },
   ],
   mastery: [
-    { id: "live_exec",  label: "Prop Firm & Live",     color: "#B89FD8", items: ["Paper Trading â€” 30 Days (prop firm rules)", "Pass Challenge Phase", "Pass Verification Phase", "Funded Live Execution", "Real-Time Risk Monitoring"] },
+    { id: "live_exec",  label: "Prop Firm & Live",     color: "#B89FD8", items: ["Paper Trading - 30 Days (prop firm rules)", "Pass Challenge Phase", "Pass Verification Phase", "Funded Live Execution", "Real-Time Risk Monitoring"] },
     { id: "adv_models", label: "Advanced Models",      color: "#B89FD8", items: ["ML Signal Generation", "NLP Sentiment Analysis", "Options Pricing Models", "High-Frequency Considerations"] },
     { id: "edge",       label: "Edge Refinement",      color: "#B89FD8", items: ["Strategy Decay Detection", "Market Regime Adaptation", "Continuous Improvement Loop"] },
     { id: "pro",        label: "Professional Practice", color: "#B89FD8", items: ["Regulatory & Compliance Basics", "Fund Structure Understanding", "Performance Attribution", "Investor Reporting"] },
@@ -60,7 +60,7 @@ function computeSkillLevel(skill, completions) {
 const BOOK_DEFS = [
   { title: "Market Wizards",                              author: "Jack Schwager",          category: "Psychology" },
   { title: "Trading in the Zone",                         author: "Mark Douglas",           category: "Psychology" },
-  { title: "Reminiscences of a Stock Operator",           author: "Edwin LefÃ¨vre",          category: "Psychology" },
+  { title: "Reminiscences of a Stock Operator",           author: "Edwin Lefevre",           category: "Psychology" },
   { title: "Technical Analysis of the Financial Markets", author: "John J. Murphy",         category: "Technical"  },
   { title: "Algorithmic Trading",                         author: "Ernest Chan",            category: "Quant"      },
   { title: "Advances in Financial Machine Learning",      author: "Marcos Lopez de Prado",  category: "Quant"      },
@@ -91,20 +91,20 @@ const MILESTONE_DEFS = [
   { label: "Risk Model Suite Complete",              color: "#7DC87A" },
   { label: "Backtesting Engine v1",                  color: "#6DB8D8" },
   { label: "First Strategy Backtest (10-yr data)",   color: "#6DB8D8" },
-  { label: "Paper Trading â€” 30-Day Structured Trial", color: "#E8B96A" },
+  { label: "Paper Trading - 30-Day Structured Trial", color: "#E8B96A" },
   { label: "Pass Prop Firm Challenge Phase",         color: "#B89FD8" },
   { label: "Pass Prop Firm Verification",            color: "#B89FD8" },
   { label: "First Funded Payout",                    color: "#B89FD8" },
 ];
 
 const NEXT_ACTIONS = [
-  { priority: "HIGH", text: "Build walk-forward validation â€” your risk/stats background makes this achievable now" },
+  { priority: "HIGH", text: "Build walk-forward validation - your risk/stats background makes this achievable now" },
   { priority: "HIGH", text: "Codify your institutional edge: translate put-spread hedging logic into a systematic options screener" },
-  { priority: "HIGH", text: "Paper trade with prop firm rules (1% risk/trade, 4% daily DD, 10% max DD) â€” apply the same discipline you used on the PM desk" },
-  { priority: "MED",  text: "Read Trading in the Zone ch. 4â€“8 â€” psychology is your lowest-rated skill and the hardest to develop" },
-  { priority: "MED",  text: "Implement Greeks (Delta, Gamma, Vega, Theta) in Python â€” you know the theory, now automate it" },
+  { priority: "HIGH", text: "Paper trade with prop firm rules (1% risk/trade, 4% daily DD, 10% max DD) - apply the same discipline you used on the PM desk" },
+  { priority: "MED",  text: "Read Trading in the Zone ch. 4-8 - psychology is your lowest-rated skill and the hardest to develop" },
+  { priority: "MED",  text: "Implement Greeks (Delta, Gamma, Vega, Theta) in Python - you know the theory, now automate it" },
   { priority: "MED",  text: "Research prop firm evaluations that suit systematic/quant traders (FTMO, Topstep, Apex Trader)" },
-  { priority: "LOW",  text: "Build a market regime detector â€” leverage your multi-asset PM exposure to identify trend vs. mean-reversion environments" },
+  { priority: "LOW",  text: "Build a market regime detector - leverage your multi-asset PM exposure to identify trend vs. mean-reversion environments" },
 ];
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -183,7 +183,7 @@ function MarkdownDoc({ content }) {
           {items.map((item, j) => (
             <li key={j} style={{ fontSize: 12, color: "#8896A8", lineHeight: 1.6, marginBottom: 3,
               display: "flex", gap: 8, alignItems: "flex-start" }}>
-              <span style={{ color: "#3A4A5A", flexShrink: 0 }}>â€º</span>
+              <span style={{ color: "#3A4A5A", flexShrink: 0 }}>{">"}</span>
               <InlineMarkdown text={item} />
             </li>
           ))}
@@ -374,7 +374,7 @@ function ModuleBar({ mod, completions, onToggle }) {
             </div>
           </div>
           <span style={{ fontSize: 10, color: "#4A5568", transform: open ? "rotate(180deg)" : "none",
-            transition: "transform 0.2s", marginLeft: 4 }}>â–¼</span>
+            transition: "transform 0.2s", marginLeft: 4 }}>v</span>
         </div>
       </div>
       {open && (
@@ -390,7 +390,7 @@ function ModuleBar({ mod, completions, onToggle }) {
                 border: `1.5px solid ${completions[i] ? mod.color : "#3A4A5A"}`,
                 background: completions[i] ? mod.color + "33" : "transparent",
                 display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s" }}>
-                {completions[i] && <span style={{ fontSize: 8, color: mod.color, fontWeight: 700 }}>âœ“</span>}
+                {completions[i] && <span style={{ fontSize: 8, color: mod.color, fontWeight: 700 }}>OK</span>}
               </div>
               <span style={{ fontSize: 12, color: completions[i] ? mod.color : "#5A6A7A",
                 transition: "color 0.15s" }}>{item}</span>
@@ -584,7 +584,7 @@ export default function Dashboard() {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
             <div>
               <div style={{ fontSize: 11, letterSpacing: "0.15em", color: "#5A6A80", textTransform: "uppercase", marginBottom: 5, fontWeight: 600 }}>
-                Harrison Seaborn Â· Goal: Prop Firm Funded Trader
+                Harrison Seaborn - Goal: Prop Firm Funded Trader
               </div>
               <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, color: "#F0F2F8", fontWeight: 600 }}>
                 Career Progression Dashboard
@@ -669,7 +669,7 @@ export default function Dashboard() {
                         border: `1.5px solid ${done ? m.color : "#2A3A4A"}`,
                         background: done ? m.color + "33" : "transparent",
                         display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
-                        {done && <span style={{ fontSize: 8, color: m.color }}>âœ“</span>}
+                        {done && <span style={{ fontSize: 8, color: m.color }}>OK</span>}
                       </div>
                       <span style={{ fontSize: 12, lineHeight: 1.3,
                         color: done ? "#5A7A5A" : "#6A7A8A",
@@ -690,7 +690,7 @@ export default function Dashboard() {
           <div>
             {/* Phase selector */}
             <div style={{ marginBottom: 24 }}>
-              <SectionLabel>Learning Phases â€” click to switch</SectionLabel>
+              <SectionLabel>Learning Phases - click to switch</SectionLabel>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
                 {PHASES.map(p => (
                   <PhaseCard key={p.id} phase={p} active={activePhase === p.id}
@@ -703,13 +703,13 @@ export default function Dashboard() {
               {/* Modules */}
               <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "20px 18px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <SectionLabel>{activePhaseData?.label} Â· Modules</SectionLabel>
+                  <SectionLabel>{activePhaseData?.label} - Modules</SectionLabel>
                   <div style={{ fontSize: 12, color: activePhaseData?.color, fontWeight: 700 }}>
                     {filteredMods.reduce((s, m) => s + (state.completions[m.id] || []).filter(Boolean).length, 0)} /
                     {filteredMods.reduce((s, m) => s + m.items.length, 0)} complete
                   </div>
                 </div>
-                <Hint>EXPAND A MODULE Â· CLICK ITEMS TO MARK COMPLETE</Hint>
+                <Hint>EXPAND A MODULE - CLICK ITEMS TO MARK COMPLETE</Hint>
                 {filteredMods.map(m => (
                   <ModuleBar key={m.id} mod={m}
                     completions={state.completions[m.id] || m.items.map(() => false)}
@@ -720,7 +720,7 @@ export default function Dashboard() {
               {/* Skill Proficiency */}
               <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "20px 18px" }}>
                 <SectionLabel>Skill Proficiency</SectionLabel>
-                <Hint>DERIVED FROM MODULE COMPLETION Â· BASE FROM INSTITUTIONAL BACKGROUND</Hint>
+                <Hint>DERIVED FROM MODULE COMPLETION - BASE FROM INSTITUTIONAL BACKGROUND</Hint>
                 {SKILL_MODULE_MAP.map(skill => (
                   <SkillRow key={skill.name} skill={skill}
                     level={computeSkillLevel(skill, state.completions)}
@@ -742,12 +742,12 @@ export default function Dashboard() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                   <SectionLabel>Essential Reading</SectionLabel>
                   <div style={{ display: "flex", gap: 10, fontSize: 10 }}>
-                    <span style={{ color: "#7DC87A" }}>â— {booksRead} read</span>
-                    <span style={{ color: "#E8B96A" }}>â— {booksReading} reading</span>
-                    <span style={{ color: "#3A4A5A" }}>â— {BOOK_DEFS.length - booksRead - booksReading} queued</span>
+                    <span style={{ color: "#7DC87A" }}>* {booksRead} read</span>
+                    <span style={{ color: "#E8B96A" }}>* {booksReading} reading</span>
+                    <span style={{ color: "#3A4A5A" }}>* {BOOK_DEFS.length - booksRead - booksReading} queued</span>
                   </div>
                 </div>
-                <Hint>CLICK DOT TO CYCLE: QUEUED â†’ READING â†’ READ</Hint>
+                <Hint>CLICK DOT TO CYCLE: QUEUED -&gt; READING -&gt; READ</Hint>
                 {BOOK_DEFS.map((book, i) => {
                   const status   = state.books[book.title] || "unread";
                   const dotColor = status === "read" ? "#7DC87A" : status === "reading" ? "#E8B96A" : "#252D3D";
@@ -774,7 +774,7 @@ export default function Dashboard() {
                   <SectionLabel>Video Library</SectionLabel>
                   <div style={{ fontSize: 12, color: "#E8B96A", fontFamily: "monospace", fontWeight: 700 }}>{totalVideos} saved</div>
                 </div>
-                <Hint>USE + / âˆ’ TO UPDATE COUNTS</Hint>
+                <Hint>USE + / - TO UPDATE COUNTS</Hint>
                 {VIDEO_CAT_DEFS.map(cat => {
                   const count = state.videos[cat.label] || 0;
                   return (
@@ -782,7 +782,7 @@ export default function Dashboard() {
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
                         <span style={{ fontSize: 12, color: "#A0AABA" }}>{cat.label}</span>
                         <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                          <MiniBtn onClick={() => adjustVideo(cat.label, -1)}>âˆ’</MiniBtn>
+                          <MiniBtn onClick={() => adjustVideo(cat.label, -1)}>-</MiniBtn>
                           <span style={{ fontSize: 12, color: cat.color, fontFamily: "monospace",
                             fontWeight: 700, minWidth: 22, textAlign: "center" }}>{count}</span>
                           <MiniBtn onClick={() => adjustVideo(cat.label, 1)}>+</MiniBtn>
@@ -812,7 +812,7 @@ export default function Dashboard() {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                     <SectionLabel>Reference Docs</SectionLabel>
                     <span style={{ fontSize: 10, color: "#3A4A5A", fontFamily: "monospace" }}>
-                      {docs.length} docs Â· {grouped.length} categories Â· auto-synced
+                      {docs.length} docs - {grouped.length} categories - auto-synced
                     </span>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -841,7 +841,7 @@ export default function Dashboard() {
                                 <div style={{ fontSize: 12, color: "#CDD5E0", fontWeight: 600,
                                   lineHeight: 1.35, marginBottom: 6 }}>{doc.title}</div>
                                 <div style={{ fontSize: 10, color: "#3A4A5A" }}>
-                                  {doc.content.split("\n").filter(l => l.trim()).length} lines Â· click to read
+                                  {doc.content.split("\n").filter(l => l.trim()).length} lines - click to read
                                 </div>
                               </div>
                             ))}
@@ -896,7 +896,7 @@ export default function Dashboard() {
                             {current}{item.unit}
                           </span>
                         )}
-                        <span style={{ fontSize: 11, color: "#3A4A5A" }}>â†’ {item.target}{item.unit}</span>
+                        <span style={{ fontSize: 11, color: "#3A4A5A" }}>{"->"} {item.target}{item.unit}</span>
                       </div>
                     </div>
                     <div style={{ height: 5, background: "#1E2535", borderRadius: 4, overflow: "hidden" }}>
@@ -913,7 +913,7 @@ export default function Dashboard() {
             {/* Weekly Activity */}
             <div style={{ background: "#0D1321", border: "1px solid #1E2535", borderRadius: 14, padding: "20px 18px" }}>
               <SectionLabel>Weekly Activity</SectionLabel>
-              <Hint>CLICK BAR +1 Â· RIGHT-CLICK âˆ’1</Hint>
+              <Hint>CLICK BAR +1 - RIGHT-CLICK -1</Hint>
               <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 120, marginTop: 12 }}>
                 {DAYS.map(day => {
                   const val  = state.activity[day] || 0;
@@ -922,7 +922,7 @@ export default function Dashboard() {
                     <div key={day} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}
                       onContextMenu={e => { e.preventDefault(); adjustActivity(day, -1); }}>
                       <div onClick={() => adjustActivity(day, 1)}
-                        title={`${val} sessions â€” click +1, right-click âˆ’1`}
+                        title={`${val} sessions - click +1, right-click -1`}
                         style={{ width: "100%", borderRadius: 4,
                           height: `${(val / 10) * 90}px`, minHeight: 4,
                           background: peak ? "#E8B96A" : "#1E2A3D",
@@ -940,7 +940,7 @@ export default function Dashboard() {
         )}
 
         <div style={{ marginTop: 32, textAlign: "center", fontSize: 10, color: "#1E2535", letterSpacing: "0.15em", fontWeight: 600 }}>
-          MIDNIGHTODYSSEY Â· QUANT FRAMEWORK v0.1 Â· CAREER PROGRESSION TRACKER
+          MIDNIGHTODYSSEY - QUANT FRAMEWORK v0.1 - CAREER PROGRESSION TRACKER
         </div>
       </div>
 
@@ -966,7 +966,7 @@ export default function Dashboard() {
               <button onClick={() => setSelectedDoc(null)}
                 style={{ background: "#1E2535", border: "none", borderRadius: 6, color: "#5A6A7A",
                   width: 28, height: 28, fontSize: 16, cursor: "pointer", flexShrink: 0,
-                  display: "flex", alignItems: "center", justifyContent: "center" }}>Ã—</button>
+                  display: "flex", alignItems: "center", justifyContent: "center" }}>x</button>
             </div>
             <div style={{ borderTop: "1px solid #1E2535", paddingTop: 20 }}>
               <MarkdownDoc content={selectedDoc.content} />
