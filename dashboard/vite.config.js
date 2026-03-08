@@ -81,6 +81,39 @@ export default defineConfig({
           }
         })
       },
+      generateBundle() {
+        try {
+          if (!fs.existsSync(DOCS_DIR)) {
+            this.emitFile({
+              type: "asset",
+              fileName: "docs_index.json",
+              source: JSON.stringify([], null, 2),
+            })
+            return
+          }
+
+          const docs = fs.readdirSync(DOCS_DIR)
+            .filter(f => f.endsWith(".md"))
+            .sort()
+            .map(filename => {
+              const content = fs.readFileSync(path.join(DOCS_DIR, filename), "utf-8")
+              return {
+                filename,
+                title: titleFromContent(content, filename),
+                category: categoryFromContent(content, filename),
+                content,
+              }
+            })
+
+          this.emitFile({
+            type: "asset",
+            fileName: "docs_index.json",
+            source: JSON.stringify(docs, null, 2),
+          })
+        } catch (e) {
+          this.warn(`[docs-api] Failed to generate docs_index.json: ${e.message}`)
+        }
+      },
     },
   ],
 })

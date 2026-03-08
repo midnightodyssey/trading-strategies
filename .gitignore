@@ -220,3 +220,5 @@ logs/
 
 # Claude Code worktrees (temporary isolated branches — not source code)
 .claude/worktrees/
+
+artifacts/

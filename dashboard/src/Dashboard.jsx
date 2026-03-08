@@ -457,10 +457,27 @@ export default function Dashboard() {
 
   // fetch docs — re-fetches on each panel open so new files are picked up automatically
   useEffect(() => {
-    fetch("/api/docs")
-      .then(r => r.json())
-      .then(data => Array.isArray(data) && setDocs(data))
-      .catch(() => {});
+    const loadDocs = async () => {
+      try {
+        const api = await fetch("/api/docs");
+        if (api.ok) {
+          const data = await api.json();
+          if (Array.isArray(data)) {
+            setDocs(data);
+            return;
+          }
+        }
+      } catch (_) {}
+
+      try {
+        const staticDocs = await fetch("/docs_index.json");
+        if (!staticDocs.ok) return;
+        const data = await staticDocs.json();
+        if (Array.isArray(data)) setDocs(data);
+      } catch (_) {}
+    };
+
+    loadDocs();
   }, []);
 
   // close modal on Escape
