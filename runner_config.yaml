@@ -81,21 +81,34 @@ schedule:
   ibkr_pacing_sleep:   1.0      # Legacy — no longer used (data no longer fetched from IBKR)
                                  # Kept here so existing configs don't break
 
+  # ── Earnings blackout ────────────────────────────────────────────────────────
+  # Skip opening new positions on a symbol within this many calendar days of its
+  # next earnings date.  Existing positions are still closed normally — only new
+  # entries are blocked.  Set to 0 to disable.
+  # ETFs and any symbol where yfinance has no earnings data are unaffected
+  # (the guard is silently skipped when the date is unavailable).
+  earnings_blackout_days: 5
+
 
 # ── SYMBOLS ───────────────────────────────────────────────────────────────────
-# Standard US equities on NYSE/NASDAQ. All must be tradeable on your account.
-symbols:
-  - AAPL
-  - MSFT
-  - GOOGL
-  - AMZN
-  - SPY    # S&P 500 ETF — good diversifier, highly liquid
-  - QQQ
-  - IVV
-  - TSLA
-  - NVDA
-  - META
-  - JPM
+# Loaded from symbols.txt (one ticker per line, inline # comments supported).
+# Edit symbols.txt to add/remove names without touching this file.
+#
+# To revert to an inline list: remove symbols_file and uncomment the symbols: block.
+symbols_file: "symbols.txt"
+
+# symbols:
+#   - AAPL
+#   - MSFT
+#   - GOOGL
+#   - AMZN
+#   - SPY
+#   - QQQ
+#   - IVV
+#   - TSLA
+#   - NVDA
+#   - META
+#   - JPM
 
 
 # ── STRATEGIES ────────────────────────────────────────────────────────────────
@@ -119,16 +132,16 @@ strategies:
 
   # ── Additional strategies (uncomment after backtest validation) ────────────
 
-  # - name: MACDCrossover       # double-smoothed trend; fewer whipsaws than EMA
-  #   params:
-  #     fast: 12
-  #     slow: 26
-  #     signal_period: 9
+  - name: MACDCrossover       # double-smoothed trend; fewer whipsaws than EMA
+    params:
+      fast: 12
+      slow: 26
+      signal_period: 9
 
-  # - name: ATRBreakout         # turtle breakout with volatility filter
-  #   params:
-  #     period: 20
-  #     atr_period: 14
+  - name: ATRBreakout         # turtle breakout with volatility filter
+    params:
+      period: 20
+      atr_period: 14
 
   # - name: TrendFilteredRSI    # RSI dip-buy/pop-sell, only in trend direction
   #   params:
@@ -172,7 +185,7 @@ sizing:
 # ── RISK GUARDS ───────────────────────────────────────────────────────────────
 risk:
   max_drawdown_pct:   0.05   # if current drawdown exceeds 5% → no new positions
-  max_open_positions: 5      # maximum concurrent open positions across all symbols
+  max_open_positions: 10     # maximum concurrent open positions across all symbols
 
 
 # ── LOGGING ───────────────────────────────────────────────────────────────────

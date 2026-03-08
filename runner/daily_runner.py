@@ -268,6 +268,43 @@ def _fetch_alpaca(
     return df.sort_index()
 
 
+def _days_to_earnings(symbol: str, logger: logging.Logger) -> Optional[int]:
+    """
+    Return the number of calendar days from today to the next known earnings date,
+    or None if the date is unavailable (ETFs, new listings, yfinance gaps).
+
+    Uses yfinance — the same library already required for Yahoo Finance data.
+    No extra dependency needed.
+
+    Returns:
+        int  >= 0 : days until nearest upcoming earnings (0 = earnings today)
+        None      : date unknown — caller should NOT apply the blackout guard
+    """
+    try:
+        import yfinance as yf
+        cal = yf.Ticker(symbol).calendar
+        if not cal:
+            return None
+        dates = cal.get("Earnings Date")
+        if not dates:
+            return None
+
+        today = date.today()
+        future: list = []
+        for d in dates:
+            d_date = d.date() if hasattr(d, "date") else d
+            if d_date >= today:
+                future.append(d_date)
+
+        if not future:
+            return None
+        return (min(future) - today).days
+
+    except Exception as exc:
+        logger.debug("%s: earnings lookup failed: %s", symbol, exc)
+        return None
+
+
 def _fetch_ohlcv(
     symbol: str,
     schedule,            # ScheduleSettings
@@ -557,6 +594,21 @@ class DailyRunner:
 
         # ── Open new position ─────────────────────────────────────────────────
         if signal != 0:
+            # Earnings blackout: don't enter a new position within N days of
+            # an earnings announcement.  Closes (above) are still allowed —
+            # only new entries are blocked.  ETFs return None from
+            # _days_to_earnings so the guard is silently skipped for them.
+            blackout = cfg.schedule.earnings_blackout_days
+            if blackout > 0:
+                days = _days_to_earnings(symbol, self._logger)
+                if days is not None and days <= blackout:
+                    self._logger.info(
+                        "%s: earnings in %d day(s) — skipping new entry "
+                        "(earnings_blackout_days=%d)",
+                        symbol, days, blackout,
+                    )
+                    return None
+
             # Respect open position cap
             if open_count >= cfg.risk.max_open_positions:
                 self._logger.info(

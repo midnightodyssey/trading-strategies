@@ -1,0 +1,96 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# symbols.txt  —  Trading Universe
+# ─────────────────────────────────────────────────────────────────────────────
+# One ticker per line.  Inline comments supported: "SPY  # S&P 500" → "SPY"
+# Edit this file to add/remove symbols without touching runner_config.yaml.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+# ── Broad Market ETFs ─────────────────────────────────────────────────────────
+SPY   # S&P 500 (SPDR) — most liquid ETF in the world
+QQQ   # Nasdaq 100 — tech-heavy, high beta
+IVV   # S&P 500 (iShares) — correlated with SPY but lower cost
+IWM   # Russell 2000 — small-cap, higher vol, leads bull/bear turns
+
+
+# ── Sector ETFs ───────────────────────────────────────────────────────────────
+XLK   # Technology
+XLF   # Financials
+XLE   # Energy
+XLV   # Health Care
+XLI   # Industrials
+XLP   # Consumer Staples
+XLY   # Consumer Discretionary
+
+
+# ── Commodity & Bond ETFs ─────────────────────────────────────────────────────
+GLD   # Gold — trends well, low equity correlation
+SLV   # Silver — higher vol than gold, follows commodities cycle
+GDX   # Gold miners — leveraged play on gold price
+TLT   # 20+ Year US Treasuries — often inverse to equities, good diversifier
+
+
+# ── International ETFs ────────────────────────────────────────────────────────
+EEM   # Emerging markets
+EFA   # Developed markets ex-US (Europe, Japan, Australia)
+
+
+# ── Mega-cap Tech ─────────────────────────────────────────────────────────────
+AAPL  # Apple
+MSFT  # Microsoft
+GOOGL # Alphabet (Google)
+AMZN  # Amazon
+NVDA  # NVIDIA — semiconductor/AI leader, high vol
+META  # Meta Platforms
+TSLA  # Tesla — very high vol, trend-follows strongly
+AMD   # Advanced Micro Devices
+AVGO  # Broadcom
+CRM   # Salesforce
+ADBE  # Adobe
+NFLX  # Netflix
+NOW   # ServiceNow
+ORCL  # Oracle
+
+
+# ── Financials & Payments ─────────────────────────────────────────────────────
+JPM   # JP Morgan — largest US bank
+V     # Visa — stable trend, low earnings gap risk
+MA    # Mastercard — similar profile to Visa
+GS    # Goldman Sachs
+BAC   # Bank of America
+BLK   # BlackRock
+
+
+# ── Health Care & Pharma ──────────────────────────────────────────────────────
+LLY   # Eli Lilly — strong multi-year trend (GLP-1/obesity drugs)
+UNH   # UnitedHealth — defensive, steady trend
+ABBV  # AbbVie
+MRK   # Merck
+AMGN  # Amgen
+
+
+# ── Consumer & Retail ─────────────────────────────────────────────────────────
+COST  # Costco — steady compounder, clean trend
+WMT   # Walmart
+HD    # Home Depot
+NKE   # Nike
+
+
+# ── Energy ────────────────────────────────────────────────────────────────────
+XOM   # Exxon Mobil
+CVX   # Chevron
+COP   # ConocoPhillips
+
+
+# ── Industrial & Aerospace ────────────────────────────────────────────────────
+CAT   # Caterpillar — cyclical, trends with global growth
+LMT   # Lockheed Martin — defensive, steady
+GE    # GE Aerospace
+BA    # Boeing — high vol, event-driven gaps; watch earnings blackout
+
+
+# ── High Volatility / Special ─────────────────────────────────────────────────
+# VXX is a volatility product that structurally decays over time.
+# It is NOT suitable for the default EMACrossover trend strategy.
+# Only uncomment if you add a dedicated mean-reversion strategy for vol spikes.
+# VXX  # Volatility (decaying instrument — use only with mean-reversion strategy)

@@ -72,15 +72,24 @@ class ScheduleSettings:
                    (historical data fetched from IB Gateway directly).
                    Now that data comes from Yahoo/Alpaca this has no effect
                    and can be left at its default value.
+
+    earnings_blackout_days: calendar days before a known earnings date during
+                   which the runner will NOT open new positions on that symbol.
+                   Existing positions are still closed as normal; this only
+                   blocks new entries.
+                   Set to 0 to disable the guard entirely.
+                   ETFs and symbols with no yfinance earnings data are unaffected
+                   (the guard is skipped when the date is unavailable).
     """
-    timezone:           str   = "America/New_York"
-    entry_time:         str   = "09:35"    # HH:MM local time — enter 5 min after open (avoids gap chaos)
-    exit_time:          str   = "15:45"    # HH:MM local time — force-close all before close
-    lookback_bars:      int   = 200        # calendar days of history to request
-    data_source:        str   = "yahoo"    # "yahoo" | "alpaca"  — where to get OHLCV bars
-    alpaca_api_key:     str   = ""         # Alpaca API key    (data_source: alpaca only)
-    alpaca_api_secret:  str   = ""         # Alpaca API secret (use ${ALPACA_API_SECRET})
-    ibkr_pacing_sleep:  float = 1.0        # legacy — no longer used; kept for config compat
+    timezone:                str   = "America/New_York"
+    entry_time:              str   = "09:35"    # HH:MM local time — enter 5 min after open
+    exit_time:               str   = "15:45"    # HH:MM local time — force-close all before close
+    lookback_bars:           int   = 200        # calendar days of history to request
+    data_source:             str   = "yahoo"    # "yahoo" | "alpaca"  — where to get OHLCV bars
+    alpaca_api_key:          str   = ""         # Alpaca API key    (data_source: alpaca only)
+    alpaca_api_secret:       str   = ""         # Alpaca API secret (use ${ALPACA_API_SECRET})
+    ibkr_pacing_sleep:       float = 1.0        # legacy — no longer used; kept for config compat
+    earnings_blackout_days:  int   = 5          # skip new entries within this many days of earnings
 
 
 @dataclass
@@ -194,6 +203,9 @@ class RunnerConfig:
         connection:    IB Gateway / TWS connection settings
         schedule:      timing and data fetch settings
         symbols:       equity tickers to trade (e.g. ["AAPL", "MSFT", "SPY"])
+        symbols_file:  optional path to a plain-text file of symbols (one per line,
+                       # for comments). When set, overrides the inline symbols list.
+                       Lets you maintain a large watchlist outside the YAML file.
         strategies:    one or more strategy specs (name + params)
         sizing:        position sizing parameters
         risk:          account-level risk guards
@@ -215,6 +227,7 @@ class RunnerConfig:
     connection:    ConnectionSettings   = field(default_factory=ConnectionSettings)
     schedule:      ScheduleSettings     = field(default_factory=ScheduleSettings)
     symbols:       List[str]            = field(default_factory=lambda: ["AAPL", "MSFT", "SPY"])
+    symbols_file:  Optional[str]        = None   # overrides symbols list when set
     strategies:    List[StrategySpec]   = field(default_factory=list)
     sizing:        SizingSettings       = field(default_factory=SizingSettings)
     risk:          RiskSettings         = field(default_factory=RiskSettings)
@@ -266,6 +279,57 @@ class RunnerConfig:
 
 # ─── PRIVATE HELPERS ─────────────────────────────────────────────────────────
 
+def _load_symbols_file(path: str) -> List[str]:
+    """
+    Load ticker symbols from a plain-text file.
+
+    Format rules:
+        - One symbol per line (auto-uppercased, whitespace stripped)
+        - Lines starting with # are full-line comments and are ignored
+        - Inline comments are supported: "SPY  # S&P 500 ETF" → "SPY"
+        - Blank lines are ignored
+
+    Example symbols.txt:
+        # Sector ETFs
+        SPY   # S&P 500
+        QQQ   # Nasdaq 100
+        IWM   # Russell 2000
+        GLD   # Gold
+
+        # Large-cap tech
+        AAPL  # Apple
+        MSFT  # Microsoft
+
+    Args:
+        path: path to the symbols file (relative to cwd or absolute)
+
+    Returns:
+        List of ticker strings
+
+    Raises:
+        FileNotFoundError: if the file does not exist
+        ValueError:        if the file contains no valid symbols
+    """
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            f"symbols_file not found: {path!r}\n"
+            "Create the file or remove symbols_file from runner_config.yaml."
+        )
+    symbols: List[str] = []
+    with open(path, "r", encoding="utf-8") as fh:
+        for line in fh:
+            # Strip inline comments first: "SPY  # S&P 500 ETF" → "SPY"
+            line = line.split("#")[0].strip()
+            if line:
+                symbols.append(line.upper())
+    if not symbols:
+        raise ValueError(
+            f"symbols_file {path!r} contains no valid symbols. "
+            "Add at least one ticker (one per line)."
+        )
+    return symbols
+
+
 def _substitute_env_vars(obj):
     """Recursively replace ${VAR_NAME} with os.environ.get('VAR_NAME', '${VAR_NAME}')."""
     if isinstance(obj, str):
@@ -313,11 +377,19 @@ def _parse_config(raw: dict) -> RunnerConfig:
     email_raw   = notif_raw.get("email",   {})
     webhook_raw = notif_raw.get("webhook", {})
 
+    # symbols_file takes precedence over the inline symbols list
+    symbols_file = raw.get("symbols_file", None) or None   # treat "" as None
+    if symbols_file:
+        symbols = _load_symbols_file(symbols_file)
+    else:
+        symbols = raw.get("symbols", ["AAPL", "MSFT", "SPY"])
+
     return RunnerConfig(
         mode=raw.get("mode", "paper"),
         connection=_dataclass_from_dict(ConnectionSettings,   conn_raw),
         schedule=_dataclass_from_dict(ScheduleSettings,       sched_raw),
-        symbols=raw.get("symbols", ["AAPL", "MSFT", "SPY"]),
+        symbols=symbols,
+        symbols_file=symbols_file,
         strategies=strategies,
         sizing=_dataclass_from_dict(SizingSettings,           sizing_raw),
         risk=_dataclass_from_dict(RiskSettings,               risk_raw),
