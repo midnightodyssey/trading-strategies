@@ -18,17 +18,18 @@ from runner.runner_config import RunnerConfig
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
         prog='python scripts/automation_jobs.py',
-        description='Automation jobs for nightly research and promotion cycles.',
+        description='Automation jobs for nightly research, promotion cycles, and execution.',
     )
-    p.add_argument('--job', choices=['nightly', 'promotion'], required=True)
+    p.add_argument('--job', choices=['nightly', 'promotion', 'execute'], required=True)
     p.add_argument('--python-bin', default=sys.executable)
     p.add_argument('--config', default='runner_config.yaml')
     p.add_argument('--phase3-script', default='scripts/phase3_auto_pipeline.py')
     p.add_argument('--report-dir', default='logs/automation')
     p.add_argument('--notify', action=argparse.BooleanOptionalAction, default=True)
 
-    p.add_argument('--promotion-runner', action='store_true', help='For promotion job, run runner in dry-run after promotion.')
+    p.add_argument('--promotion-runner', action='store_true', help='After promotion, run runner in dry-run as a verification step.')
     p.add_argument('--promotion-recompute-backtest', action='store_true', help='For promotion job, rerun backtest before selection.')
+    p.add_argument('--execute-dry-run', action='store_true', help='For execute job, run runner with --dry-run (no live orders).')
 
     p.add_argument('--selection-mode', choices=['global', 'per_symbol'], default='global')
     p.add_argument('--top-n', type=int, default=3)
@@ -50,14 +51,9 @@ def _run(cmd: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, text=True, capture_output=True)
 
 
-def _build_phase3_command(args: argparse.Namespace, repo_root: Path) -> list[str]:
-    phase3 = str((repo_root / args.phase3_script).resolve())
-
+def _common_selection_flags(args: argparse.Namespace) -> list[str]:
     top_k_global = args.top_k_global if args.top_k_global is not None else args.top_n
-
-    cmd = [
-        args.python_bin,
-        phase3,
+    return [
         '--selection-mode',
         str(args.selection_mode),
         '--top-n',
@@ -84,16 +80,31 @@ def _build_phase3_command(args: argparse.Namespace, repo_root: Path) -> list[str
         str(args.max_drawdown_abs),
     ]
 
+
+def _build_phase3_command(args: argparse.Namespace, repo_root: Path) -> list[str]:
+    phase3 = str((repo_root / args.phase3_script).resolve())
+    cmd = [args.python_bin, phase3]
+
     if args.job == 'nightly':
+        cmd.extend(_common_selection_flags(args))
         return cmd
 
-    if not args.promotion_recompute_backtest:
-        cmd.append('--selection-only')
+    if args.job == 'promotion':
+        cmd.extend(_common_selection_flags(args))
+        if not args.promotion_recompute_backtest:
+            cmd.append('--selection-only')
+        return cmd
 
-    if args.promotion_runner:
-        cmd.extend(['--runner-only', '--dry-run'])
-
+    # execute job
+    cmd.append('--runner-only')
+    if args.execute_dry_run:
+        cmd.append('--dry-run')
     return cmd
+
+
+def _build_promotion_runner_check_command(args: argparse.Namespace, repo_root: Path) -> list[str]:
+    phase3 = str((repo_root / args.phase3_script).resolve())
+    return [args.python-bin if hasattr(args, 'python-bin') else args.python_bin, phase3, '--runner-only', '--dry-run']
 
 
 def _write_reports(report_dir: Path, payload: dict[str, Any], stdout: str, stderr: str) -> tuple[Path, Path]:
@@ -164,21 +175,35 @@ def main() -> None:
     repo_root = Path(__file__).resolve().parents[1]
 
     started = datetime.now(timezone.utc)
-    cmd = _build_phase3_command(args, repo_root)
-    result = _run(cmd)
+    primary_cmd = _build_phase3_command(args, repo_root)
+    primary = _run(primary_cmd)
+
+    extra_stdout = ''
+    extra_stderr = ''
+    returncode = primary.returncode
+
+    if args.job == 'promotion' and args.promotion_runner and returncode == 0:
+        check_cmd = [args.python_bin, str((repo_root / args.phase3_script).resolve()), '--runner-only', '--dry-run']
+        check = _run(check_cmd)
+        extra_stdout = f"\n\n[promotion_runner_check]\n{check.stdout}"
+        extra_stderr = f"\n\n[promotion_runner_check]\n{check.stderr}"
+        if check.returncode != 0:
+            returncode = check.returncode
+
     finished = datetime.now(timezone.utc)
 
     payload = {
         'job': args.job,
-        'success': result.returncode == 0,
-        'returncode': result.returncode,
+        'success': returncode == 0,
+        'returncode': returncode,
         'started_utc': started.isoformat(),
         'finished_utc': finished.isoformat(),
         'duration_seconds': (finished - started).total_seconds(),
-        'command': cmd,
+        'command': primary_cmd,
         'settings': {
             'promotion_runner': args.promotion_runner,
             'promotion_recompute_backtest': args.promotion_recompute_backtest,
+            'execute_dry_run': args.execute_dry_run,
             'notify': args.notify,
             'selection_mode': args.selection_mode,
             'top_n': args.top_n,
@@ -196,7 +221,12 @@ def main() -> None:
     }
 
     report_dir = (repo_root / args.report_dir).resolve()
-    json_path, md_path = _write_reports(report_dir, payload, result.stdout, result.stderr)
+    json_path, md_path = _write_reports(
+        report_dir,
+        payload,
+        primary.stdout + extra_stdout,
+        primary.stderr + extra_stderr,
+    )
 
     try:
         _notify(args, repo_root, payload, md_path)
@@ -210,7 +240,7 @@ def main() -> None:
     print(f"Markdown report: {md_path}")
 
     if not payload['success']:
-        raise SystemExit(result.returncode)
+        raise SystemExit(returncode)
 
 
 if __name__ == '__main__':
