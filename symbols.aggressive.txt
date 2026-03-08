@@ -1,0 +1,14 @@
+﻿# Aggressive book (single-name, high beta growth)
+NVDA
+TSLA
+AMD
+AVGO
+META
+NFLX
+ADBE
+CRM
+NOW
+AMZN
+AAPL
+MSFT
+GOOGL

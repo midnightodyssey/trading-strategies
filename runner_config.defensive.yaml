@@ -1,0 +1,52 @@
+﻿mode: paper
+
+connection:
+  host: "127.0.0.1"
+  gateway: true
+  client_id: 31
+  timeout: 30
+
+schedule:
+  timezone: "America/New_York"
+  entry_time: "09:35"
+  exit_time: "15:45"
+  lookback_bars: 220
+  earnings_blackout_days: 7
+
+symbols_file: "symbols.defensive.txt"
+
+strategies:
+  - name: EMACrossover
+    params:
+      fast: 12
+      slow: 26
+
+sizing:
+  method: fixed_fraction
+  risk_pct: 0.006
+  stop_pct: 0.02
+  reward_ratio: 1.8
+  target_vol: 0.08
+  max_position_pct: 0.08
+  allow_short: false
+
+risk:
+  max_drawdown_pct: 0.04
+  max_open_positions: 6
+
+logging:
+  level: INFO
+  file: "logs/daily_runner_defensive.log"
+
+notifications:
+  webhook:
+    enabled: false
+    url: ""
+  email:
+    enabled: true
+    smtp_host: "smtp.gmail.com"
+    smtp_port: 587
+    username: "${EMAIL_USER}"
+    password: "${EMAIL_PASS}"
+    from_addr: "${EMAIL_USER}"
+    to_addr: "${EMAIL_USER}"

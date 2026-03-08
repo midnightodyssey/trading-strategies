@@ -1,55 +1,66 @@
-﻿*Category: Automation*
+﻿# Automation Jobs
 
-# Automation Jobs
-
-This repo now includes an automation entrypoint:
+This repo includes an automation entrypoint:
 
 - `scripts/automation_jobs.py`
 
 ## Jobs
 
 - `nightly`: full research refresh
-  - runs backtest + strategy selection + auto config generation
 - `promotion`: promote active strategy set
-  - by default uses latest backtest artifacts and re-generates selection/config
-  - optionally can recompute backtest first
-- `execute`: run the current active runner config
-  - this is the actual trading execution job
-  - supports dry-run safety mode
+- `execute`: run current active runner config
 
-## Commands
+## Core Commands
 
 ```bash
-# Nightly research refresh
-python scripts/automation_jobs.py --job nightly --selection-mode global --top-k-global 3
-
-# Weekly promotion from latest artifacts
-python scripts/automation_jobs.py --job promotion --selection-mode per_symbol --top-n-per-symbol 1 --max-total-allocations 12
-
-# Promotion with fresh backtest first
-python scripts/automation_jobs.py --job promotion --promotion-recompute-backtest --selection-mode per_symbol --top-n-per-symbol 1 --max-total-allocations 12
-
-# Actual execution (places orders if mode=live)
+python scripts/automation_jobs.py --job nightly
+python scripts/automation_jobs.py --job promotion
 python scripts/automation_jobs.py --job execute
-
-# Execution safety test (no orders)
 python scripts/automation_jobs.py --job execute --execute-dry-run
+```
+
+## Multi-Book Setup (Aggressive + Defensive)
+
+Use separate configs, generated outputs, and report dirs to keep books isolated.
+
+### Aggressive book
+
+```bash
+python scripts/automation_jobs.py --job nightly \
+  --config runner_config.aggressive.yaml \
+  --selected-output generated/aggressive/selected_strategies.yaml \
+  --resolved-config generated/aggressive/runner_config.auto.yaml \
+  --manual-override generated/aggressive/manual_override.yaml \
+  --report-dir logs/automation/aggressive \
+  --selection-mode per_symbol --top-n-per-symbol 1 --max-total-allocations 10
+```
+
+### Defensive book
+
+```bash
+python scripts/automation_jobs.py --job nightly \
+  --config runner_config.defensive.yaml \
+  --selected-output generated/defensive/selected_strategies.yaml \
+  --resolved-config generated/defensive/runner_config.auto.yaml \
+  --manual-override generated/defensive/manual_override.yaml \
+  --report-dir logs/automation/defensive \
+  --selection-mode global --top-k-global 3
 ```
 
 ## Reports
 
-Reports are written to:
+Reports are written to the configured `--report-dir`:
 
-- `logs/automation/latest_nightly.md`
-- `logs/automation/latest_promotion.md`
-- `logs/automation/latest_execute.md`
-- timestamped `.md` and `.json` files in `logs/automation/`
+- `latest_nightly.md`
+- `latest_promotion.md`
+- `latest_execute.md`
+- timestamped `.md` and `.json` files
 
 ## Notifications
 
-By default, notifications are enabled and use `runner_config.yaml` notification settings.
+Enabled by default and loaded from `--config` notifications settings.
 
-Disable notifications per run:
+Disable per run:
 
 ```bash
 python scripts/automation_jobs.py --job nightly --no-notify
@@ -60,16 +71,15 @@ python scripts/automation_jobs.py --job nightly --no-notify
 ```cron
 CRON_TZ=America/New_York
 
-# Nightly research (Mon-Fri) at 8:15 PM ET (global top-3)
-15 20 * * 1-5 cd /home/trading/trading-strategies && . .venv/bin/activate && python scripts/automation_jobs.py --job nightly --selection-mode global --top-k-global 3 >> logs/automation/nightly_cron.log 2>&1
+# Aggressive: nightly research
+15 20 * * 1-5 cd /home/trading/trading-strategies && . .venv/bin/activate && python scripts/automation_jobs.py --job nightly --config runner_config.aggressive.yaml --selected-output generated/aggressive/selected_strategies.yaml --resolved-config generated/aggressive/runner_config.auto.yaml --manual-override generated/aggressive/manual_override.yaml --report-dir logs/automation/aggressive --selection-mode per_symbol --top-n-per-symbol 1 --max-total-allocations 10 >> logs/automation/aggressive/nightly_cron.log 2>&1
 
-# Weekly promotion (Sunday) at 6:00 PM ET (per-symbol, 1 each, capped at 12)
-0 18 * * 0 cd /home/trading/trading-strategies && . .venv/bin/activate && python scripts/automation_jobs.py --job promotion --selection-mode per_symbol --top-n-per-symbol 1 --max-total-allocations 12 >> logs/automation/promotion_cron.log 2>&1
+# Aggressive: daily execution
+35 9 * * 1-5 cd /home/trading/trading-strategies && . .venv/bin/activate && python scripts/automation_jobs.py --job execute --config runner_config.aggressive.yaml --resolved-config generated/aggressive/runner_config.auto.yaml --report-dir logs/automation/aggressive >> logs/automation/aggressive/execute_cron.log 2>&1
 
-# Monthly promotion (1st day of month) at 6:00 PM ET with fresh backtest
-0 18 1 * * cd /home/trading/trading-strategies && . .venv/bin/activate && python scripts/automation_jobs.py --job promotion --promotion-recompute-backtest --selection-mode per_symbol --top-n-per-symbol 1 --max-total-allocations 12 >> logs/automation/promotion_monthly_cron.log 2>&1
+# Defensive: nightly research
+20 20 * * 1-5 cd /home/trading/trading-strategies && . .venv/bin/activate && python scripts/automation_jobs.py --job nightly --config runner_config.defensive.yaml --selected-output generated/defensive/selected_strategies.yaml --resolved-config generated/defensive/runner_config.auto.yaml --manual-override generated/defensive/manual_override.yaml --report-dir logs/automation/defensive --selection-mode global --top-k-global 3 >> logs/automation/defensive/nightly_cron.log 2>&1
 
-# Daily execution (Mon-Fri) at 9:35 AM ET
-35 9 * * 1-5 cd /home/trading/trading-strategies && . .venv/bin/activate && python scripts/automation_jobs.py --job execute >> logs/automation/execute_cron.log 2>&1
+# Defensive: daily execution
+40 9 * * 1-5 cd /home/trading/trading-strategies && . .venv/bin/activate && python scripts/automation_jobs.py --job execute --config runner_config.defensive.yaml --resolved-config generated/defensive/runner_config.auto.yaml --report-dir logs/automation/defensive >> logs/automation/defensive/execute_cron.log 2>&1
 ```
-

@@ -1,0 +1,127 @@
+mode: paper
+connection:
+  host: 127.0.0.1
+  gateway: true
+  client_id: 21
+  timeout: 30
+schedule:
+  timezone: America/New_York
+  entry_time: 09:35
+  exit_time: '15:45'
+  lookback_bars: 220
+  earnings_blackout_days: 3
+symbols_file: symbols.aggressive.txt
+strategies:
+- name: SMACrossover
+  params: {}
+- name: TrendFilteredRSI
+  params: {}
+- name: MACDCrossover
+  params: {}
+- name: ATRBreakout
+  params: {}
+- name: EMACrossover
+  params:
+    fast: 12
+    slow: 26
+- name: RSIMeanReversion
+  params: {}
+- name: BollingerMeanReversion
+  params: {}
+- name: PriceBreakout
+  params: {}
+sizing:
+  method: fixed_fraction
+  risk_pct: 0.012
+  stop_pct: 0.025
+  reward_ratio: 2.2
+  target_vol: 0.12
+  max_position_pct: 0.12
+  allow_short: false
+risk:
+  max_drawdown_pct: 0.07
+  max_open_positions: 8
+logging:
+  level: INFO
+  file: logs/daily_runner_aggressive.log
+notifications:
+  webhook:
+    enabled: false
+    url: ''
+  email:
+    enabled: true
+    smtp_host: smtp.gmail.com
+    smtp_port: 587
+    username: ${EMAIL_USER}
+    password: ${EMAIL_PASS}
+    from_addr: ${EMAIL_USER}
+    to_addr: ${EMAIL_USER}
+execution_plan:
+  source: auto_selection
+  generated_at_utc: '2026-03-08T07:56:47.536992+00:00'
+  selected_allocations:
+  - symbol: AAPL
+    strategy: SMACrossover
+    selection_score: 0.764623
+    source: per_symbol
+    weight: 0.125
+  - symbol: ABBV
+    strategy: TrendFilteredRSI
+    selection_score: 0.574057
+    source: per_symbol
+    weight: 0.125
+  - symbol: ADBE
+    strategy: MACDCrossover
+    selection_score: 0.916156
+    source: per_symbol
+    weight: 0.125
+  - symbol: AMD
+    strategy: ATRBreakout
+    selection_score: 0.897642
+    source: per_symbol
+    weight: 0.125
+  - symbol: AMGN
+    strategy: EMACrossover
+    selection_score: 0.923113
+    source: per_symbol
+    weight: 0.125
+  - symbol: AMZN
+    strategy: RSIMeanReversion
+    selection_score: 0.79092
+    source: per_symbol
+    weight: 0.125
+  - symbol: AVGO
+    strategy: BollingerMeanReversion
+    selection_score: 0.544222
+    source: per_symbol
+    weight: 0.125
+  - symbol: BA
+    strategy: PriceBreakout
+    selection_score: 0.606899
+    source: per_symbol
+    weight: 0.125
+auto_selection:
+  enabled: true
+  source_run_id: '20260308_055045'
+  selection_rules:
+    top_k_global: 3
+    top_n_per_symbol: 1
+    min_symbols: 5
+    min_sharpe: 0.0
+    min_trades: 50.0
+    max_drawdown_abs: 0.35
+    diversify: true
+    corr_threshold: 0.85
+    max_total_allocations: 10
+    fallback_to_unfiltered_if_empty: true
+  selection_mode: per_symbol
+  risk_budget:
+    max_symbol_weight: 0.3
+    max_strategy_weight: 0.25
+  selected_count: 8
+manual_override:
+  enabled: false
+  applied: false
+  mode: null
+  source: null
+  notes: null

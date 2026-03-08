@@ -27,6 +27,10 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument('--report-dir', default='logs/automation')
     p.add_argument('--notify', action=argparse.BooleanOptionalAction, default=True)
 
+    p.add_argument('--selected-output', default='generated/selected_strategies.yaml')
+    p.add_argument('--resolved-config', default='generated/runner_config.auto.yaml')
+    p.add_argument('--manual-override', default='generated/manual_override.yaml')
+
     p.add_argument('--promotion-runner', action='store_true', help='After promotion, run runner in dry-run as a verification step.')
     p.add_argument('--promotion-recompute-backtest', action='store_true', help='For promotion job, rerun backtest before selection.')
     p.add_argument('--execute-dry-run', action='store_true', help='For execute job, run runner with --dry-run (no live orders).')
@@ -81,9 +85,24 @@ def _common_selection_flags(args: argparse.Namespace) -> list[str]:
     ]
 
 
-def _build_phase3_command(args: argparse.Namespace, repo_root: Path) -> list[str]:
+def _base_phase3_command(args: argparse.Namespace, repo_root: Path) -> list[str]:
     phase3 = str((repo_root / args.phase3_script).resolve())
-    cmd = [args.python_bin, phase3]
+    return [
+        args.python_bin,
+        phase3,
+        '--base-config',
+        str(args.config),
+        '--selected-output',
+        str(args.selected_output),
+        '--resolved-config',
+        str(args.resolved_config),
+        '--manual-override',
+        str(args.manual_override),
+    ]
+
+
+def _build_phase3_command(args: argparse.Namespace, repo_root: Path) -> list[str]:
+    cmd = _base_phase3_command(args, repo_root)
 
     if args.job == 'nightly':
         cmd.extend(_common_selection_flags(args))
@@ -100,11 +119,6 @@ def _build_phase3_command(args: argparse.Namespace, repo_root: Path) -> list[str
     if args.execute_dry_run:
         cmd.append('--dry-run')
     return cmd
-
-
-def _build_promotion_runner_check_command(args: argparse.Namespace, repo_root: Path) -> list[str]:
-    phase3 = str((repo_root / args.phase3_script).resolve())
-    return [args.python-bin if hasattr(args, 'python-bin') else args.python_bin, phase3, '--runner-only', '--dry-run']
 
 
 def _write_reports(report_dir: Path, payload: dict[str, Any], stdout: str, stderr: str) -> tuple[Path, Path]:
@@ -159,6 +173,7 @@ def _notify(args: argparse.Namespace, repo_root: Path, payload: dict[str, Any], 
     subject = f"[Automation] {args.job} {status}"
     body = (
         f"Job: {args.job}\n"
+        f"Config: {args.config}\n"
         f"Status: {status}\n"
         f"Started (UTC): {payload['started_utc']}\n"
         f"Finished (UTC): {payload['finished_utc']}\n"
@@ -183,7 +198,7 @@ def main() -> None:
     returncode = primary.returncode
 
     if args.job == 'promotion' and args.promotion_runner and returncode == 0:
-        check_cmd = [args.python_bin, str((repo_root / args.phase3_script).resolve()), '--runner-only', '--dry-run']
+        check_cmd = _base_phase3_command(args, repo_root) + ['--runner-only', '--dry-run']
         check = _run(check_cmd)
         extra_stdout = f"\n\n[promotion_runner_check]\n{check.stdout}"
         extra_stderr = f"\n\n[promotion_runner_check]\n{check.stderr}"
@@ -201,6 +216,10 @@ def main() -> None:
         'duration_seconds': (finished - started).total_seconds(),
         'command': primary_cmd,
         'settings': {
+            'config': args.config,
+            'selected_output': args.selected_output,
+            'resolved_config': args.resolved_config,
+            'manual_override': args.manual_override,
             'promotion_runner': args.promotion_runner,
             'promotion_recompute_backtest': args.promotion_recompute_backtest,
             'execute_dry_run': args.execute_dry_run,

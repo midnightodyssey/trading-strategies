@@ -1,0 +1,14 @@
+﻿# Defensive book (broad ETFs, sectors, ballast)
+SPY
+IVV
+QQQ
+VTI
+IWM
+XLF
+XLV
+XLP
+XLI
+XLU
+TLT
+IEF
+GLD
