@@ -16,10 +16,11 @@ Entry points:
 Execution flow:
     1. Load config + setup logging
     2. Check market calendar (exit cleanly on weekends / holidays)
-    3. Connect to IB Gateway
+    3. Connect to IB Gateway (for orders only — NOT for data)
     4. Fetch account equity + sync existing positions to OMS
     5. For each symbol:
-         a. Fetch historical OHLCV data
+         a. Fetch historical OHLCV data from Yahoo Finance or Alpaca
+            (configured via schedule.data_source — no IBKR rate limits)
          b. Generate consensus signal from all configured strategies
          c. Compare signal against current IBKR position
          d. Close reversed/flattened positions; open new bracket orders
@@ -44,7 +45,7 @@ import logging
 import logging.handlers
 import os
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Dict, List, Optional
 from zoneinfo import ZoneInfo
 
@@ -53,6 +54,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from framework.broker          import IBKRBroker, IBKRConnectionError
+from framework                 import data as fwdata
 from framework.execution       import OMS
 from framework.execution.sizing import fixed_fraction, vol_target
 from framework.strategies      import (
@@ -192,6 +194,108 @@ def _estimate_annual_vol(df: pd.DataFrame, window: int = 20) -> float:
     if len(returns) < window:
         return 0.20   # fallback: assume 20% if insufficient history
     return float(returns.tail(window).std() * (252 ** 0.5))
+
+
+# ─── DATA FETCHING ─────────────────────────────────────────────────────────────
+
+def _fetch_yahoo(symbol: str, lookback_bars: int) -> pd.DataFrame:
+    """
+    Fetch OHLCV from Yahoo Finance via yfinance.
+
+    Free, no API key, no rate limits. Works for any universe size.
+    Returns a clean DataFrame with title-case columns and a tz-naive DatetimeIndex.
+    """
+    start = (date.today() - timedelta(days=lookback_bars)).strftime("%Y-%m-%d")
+    df = fwdata.fetch(symbol, start=start)
+    return fwdata.clean(df)
+
+
+def _fetch_alpaca(
+    symbol: str,
+    lookback_bars: int,
+    api_key: str,
+    api_secret: str,
+) -> pd.DataFrame:
+    """
+    Fetch OHLCV from Alpaca Markets.
+
+    Requires the alpaca-py package: pip install alpaca-py
+    Free tier delivers 15-minute delayed data; paid tier is real-time.
+
+    Credentials in runner_config.yaml (schedule section):
+        alpaca_api_key:    "${ALPACA_API_KEY}"
+        alpaca_api_secret: "${ALPACA_API_SECRET}"
+
+    Returns a DataFrame matching the framework.data.fetch() contract:
+    title-case columns (Open, High, Low, Close, Volume), tz-naive DatetimeIndex.
+    """
+    try:
+        from alpaca.data.historical import StockHistoricalDataClient
+        from alpaca.data.requests   import StockBarsRequest
+        from alpaca.data.timeframe  import TimeFrame
+    except ImportError as exc:
+        raise ImportError(
+            "alpaca-py is not installed.\n"
+            "Run:  pip install alpaca-py\n"
+            "Or switch  data_source: yahoo  in runner_config.yaml."
+        ) from exc
+
+    start_dt = datetime.utcnow() - timedelta(days=lookback_bars)
+    client   = StockHistoricalDataClient(api_key=api_key, secret_key=api_secret)
+    req      = StockBarsRequest(
+        symbol_or_symbols=symbol,
+        timeframe=TimeFrame.Day,
+        start=start_dt,
+    )
+    bars = client.get_stock_bars(req)
+    df   = bars.df
+
+    # Alpaca returns a MultiIndex (symbol, timestamp) — unwrap to single DatetimeIndex
+    if isinstance(df.index, pd.MultiIndex):
+        df = df.xs(symbol, level="symbol")
+
+    # Rename lowercase → title-case to match framework.data.fetch() contract
+    df = df.rename(columns={
+        "open": "Open", "high": "High", "low": "Low",
+        "close": "Close", "volume": "Volume",
+    })
+    df = df[["Open", "High", "Low", "Close", "Volume"]].copy()
+
+    # Strip timezone (tz-aware → tz-naive, consistent with yfinance output)
+    if df.index.tz is not None:
+        df.index = df.index.tz_convert("UTC").tz_localize(None)
+
+    return df.sort_index()
+
+
+def _fetch_ohlcv(
+    symbol: str,
+    schedule,            # ScheduleSettings
+    logger: logging.Logger,
+) -> pd.DataFrame:
+    """
+    Dispatch to the configured data source and return clean OHLCV bars.
+
+    data_source: "yahoo"  → Yahoo Finance (default, no key needed)
+    data_source: "alpaca" → Alpaca Markets (requires API credentials)
+    """
+    src = schedule.data_source.lower()
+    logger.debug("%s: fetching data via %s (%d-day lookback)", symbol, src, schedule.lookback_bars)
+
+    if src == "alpaca":
+        return _fetch_alpaca(
+            symbol,
+            schedule.lookback_bars,
+            schedule.alpaca_api_key,
+            schedule.alpaca_api_secret,
+        )
+
+    # Default: Yahoo Finance
+    if src != "yahoo":
+        logger.warning(
+            "Unknown data_source %r — falling back to 'yahoo'", schedule.data_source
+        )
+    return _fetch_yahoo(symbol, schedule.lookback_bars)
 
 
 # ─── DAILY RUNNER ─────────────────────────────────────────────────────────────
@@ -386,13 +490,8 @@ class DailyRunner:
             self._logger.debug("%s: pending order exists — skipping", symbol)
             return None
 
-        # ── Fetch historical data ─────────────────────────────────────────────
-        bars = cfg.schedule.lookback_bars
-        df   = broker.get_historical_data(
-            symbol,
-            duration=f"{bars} D",
-            bar_size="1 day",
-        )
+        # ── Fetch historical data (Yahoo Finance or Alpaca — not IBKR) ──────────
+        df = _fetch_ohlcv(symbol, cfg.schedule, self._logger)
         if df.empty or len(df) < 5:
             self._logger.warning("%s: insufficient data (%d bars) — skipping", symbol, len(df))
             return None

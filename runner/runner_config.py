@@ -48,14 +48,39 @@ class ScheduleSettings:
     """
     Market timing and data parameters.
 
-    lookback_bars: trading days of OHLCV history to fetch per symbol.
+    data_source: where to fetch historical OHLCV bars.
+                   "yahoo"  — Yahoo Finance via yfinance (default).
+                              Free, no API key, no rate limits. Covers all
+                              US equities, ETFs, indices. Adjust-split/dividend.
+                              Ideal for any universe size.
+                   "alpaca" — Alpaca Markets REST API.
+                              Requires alpaca_api_key + alpaca_api_secret.
+                              Free tier = 15-min delayed data. Paid = real-time.
+                              pip install alpaca-py  before using.
+
+    alpaca_api_key / alpaca_api_secret:
+                   Alpaca credentials (only read when data_source: alpaca).
+                   Store via env vars and reference with ${VAR} in the YAML:
+                       alpaca_api_key:    "${ALPACA_API_KEY}"
+                       alpaca_api_secret: "${ALPACA_API_SECRET}"
+
+    lookback_bars: calendar days of OHLCV history to fetch per symbol.
                    Must be >= your slowest indicator period.
                    200 covers 6-month SMA/200-day EMA — plenty for all built-in strategies.
+
+    ibkr_pacing_sleep: DEPRECATED — only applies when data_source was "ibkr"
+                   (historical data fetched from IB Gateway directly).
+                   Now that data comes from Yahoo/Alpaca this has no effect
+                   and can be left at its default value.
     """
-    timezone:      str = "America/New_York"
-    entry_time:    str = "09:35"    # HH:MM local time — enter 5 min after open (avoids gap chaos)
-    exit_time:     str = "15:45"    # HH:MM local time — force-close all before close
-    lookback_bars: int = 200        # calendar days to fetch (ib_insync "200 D")
+    timezone:           str   = "America/New_York"
+    entry_time:         str   = "09:35"    # HH:MM local time — enter 5 min after open (avoids gap chaos)
+    exit_time:          str   = "15:45"    # HH:MM local time — force-close all before close
+    lookback_bars:      int   = 200        # calendar days of history to request
+    data_source:        str   = "yahoo"    # "yahoo" | "alpaca"  — where to get OHLCV bars
+    alpaca_api_key:     str   = ""         # Alpaca API key    (data_source: alpaca only)
+    alpaca_api_secret:  str   = ""         # Alpaca API secret (use ${ALPACA_API_SECRET})
+    ibkr_pacing_sleep:  float = 1.0        # legacy — no longer used; kept for config compat
 
 
 @dataclass

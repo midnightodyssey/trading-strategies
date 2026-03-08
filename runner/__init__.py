@@ -6,9 +6,14 @@
 #   python -m runner.daily_runner --dry-run          # signals only, no orders
 #
 # Programmatic usage:
-#   from runner import DailyRunner
+#   from runner.daily_runner import DailyRunner
 #   DailyRunner("runner_config.yaml").run()
 
-from .daily_runner  import DailyRunner
+# NOTE: DailyRunner is intentionally NOT imported here at package level.
+# Importing runner.daily_runner eagerly via __init__ causes a RuntimeWarning
+# when running with `python -m runner.daily_runner` because Python loads
+# daily_runner once as part of the package __init__, then again as __main__.
+# Import it directly instead: from runner.daily_runner import DailyRunner
+
 from .runner_config import RunnerConfig, StrategySpec
 from .notifier      import Notifier

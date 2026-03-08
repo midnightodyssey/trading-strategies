@@ -6,8 +6,10 @@
 #   1. Set mode: paper  (then live once you're confident)
 #   2. Edit symbols to your watchlist
 #   3. Choose one or more strategies with params (see available list below)
-#   4. Set notifications.webhook.enabled: true and paste your Discord/Slack URL
-#   5. Run:  python -m runner.daily_runner
+#   4. Set schedule.data_source: yahoo  (default, no key needed)
+#      or  data_source: alpaca  with your API credentials for real-time data
+#   5. Set notifications.webhook.enabled: true and paste your Discord/Slack URL
+#   6. Run:  python -m runner.daily_runner
 #
 # AVAILABLE STRATEGIES
 #   Crossover / trend-following:
@@ -49,11 +51,35 @@ connection:
 
 # ── MARKET TIMING & DATA ──────────────────────────────────────────────────────
 schedule:
-  timezone:       "America/New_York"
-  entry_time:     "09:35"   # Place orders 5 min after open (avoids opening chaos)
-  exit_time:      "15:45"   # Force-close all positions 15 min before close
-  lookback_bars:  200       # Calendar days of daily OHLCV history to fetch
-                            # Must be >= your slowest strategy indicator period
+  timezone:            "America/New_York"
+  entry_time:          "09:35"   # Place orders 5 min after open (avoids opening chaos)
+  exit_time:           "15:45"   # Force-close all positions 15 min before close
+  lookback_bars:       200       # Calendar days of daily OHLCV history to fetch
+                                 # Must be >= your slowest strategy indicator period
+
+  # ── Historical data source ───────────────────────────────────────────────────
+  # IBKR is used for ORDERS only. Data comes from one of the sources below.
+  #
+  #   yahoo  — Yahoo Finance via yfinance (default)
+  #            Free, no API key, no rate limits.
+  #            Works for any number of symbols.
+  #
+  #   alpaca — Alpaca Markets REST API
+  #            Free tier = 15-min delayed data; paid = real-time.
+  #            Requires:  pip install alpaca-py
+  #            Set credentials via env vars (see below).
+  #
+  data_source:         yahoo
+
+  # Alpaca credentials — only read when data_source: alpaca
+  # Export on your VPS then reference here:
+  #   export ALPACA_API_KEY="PKxxxxxxxxxxxxxxxxxxxxxxxx"
+  #   export ALPACA_API_SECRET="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  alpaca_api_key:    "${ALPACA_API_KEY}"
+  alpaca_api_secret: "${ALPACA_API_SECRET}"
+
+  ibkr_pacing_sleep:   1.0      # Legacy — no longer used (data no longer fetched from IBKR)
+                                 # Kept here so existing configs don't break
 
 
 # ── SYMBOLS ───────────────────────────────────────────────────────────────────
@@ -168,10 +194,10 @@ notifications:
 
   # Email via SMTP (Gmail, SendGrid, etc.)
   email:
-    enabled:   false
+    enabled:   true
     smtp_host: "smtp.gmail.com"
     smtp_port: 587
-    username:  "${EMAIL_USER}"     # set EMAIL_USER env var
-    password:  "${EMAIL_PASS}"     # set EMAIL_PASS env var (use app password for Gmail)
+    username:  "${EMAIL_USER}"     # export EMAIL_USER="you@gmail.com" on the VPS
+    password:  "${EMAIL_PASS}"     # export EMAIL_PASS="xxxx xxxx xxxx xxxx"  (Gmail app password)
     from_addr: "${EMAIL_USER}"
-    to_addr:   "you@example.com"
+    to_addr:   "${EMAIL_USER}"     # sends to yourself; change if you want a different recipient
