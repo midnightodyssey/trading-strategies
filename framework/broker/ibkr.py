@@ -524,10 +524,13 @@ class IBKRBroker:
 
         rows = []
         for item in portfolio:
+            primary_exch = getattr(item.contract, "primaryExch", None)
+            if not primary_exch:
+                primary_exch = getattr(item.contract, "primaryExchange", None)
             rows.append({
                 "symbol":         item.contract.symbol,
                 "sec_type":       item.contract.secType,
-                "exchange":       item.contract.primaryExch or item.contract.exchange,
+                "exchange":       primary_exch or item.contract.exchange,
                 "currency":       item.contract.currency,
                 "position":       item.position,
                 "avg_cost":       item.averageCost,
