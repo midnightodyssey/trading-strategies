@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from runner.notifier import Notifier
@@ -161,6 +163,67 @@ def _write_reports(report_dir: Path, payload: dict[str, Any], stdout: str, stder
     return json_path, md_path
 
 
+def _summarize_selection(selected_path: Path, max_rows: int = 8) -> str:
+    if not selected_path.exists():
+        return "Selection summary: (selected_strategies.yaml not found)"
+
+    try:
+        data = yaml.safe_load(selected_path.read_text(encoding="utf-8")) or {}
+    except Exception as exc:
+        return f"Selection summary: (failed to read {selected_path}: {exc})"
+
+    lines: list[str] = []
+    src = data.get("source", {}) or {}
+    lines.append("Selection summary:")
+    if src.get("run_id"):
+        lines.append(f"  run_id: {src.get('run_id')}")
+    if data.get("selection_mode"):
+        lines.append(f"  mode: {data.get('selection_mode')}")
+
+    rules = data.get("selection_rules", {}) or {}
+    if rules:
+        lines.append(
+            "  rules: "
+            f"top_k_global={rules.get('top_k_global')} "
+            f"top_n_per_symbol={rules.get('top_n_per_symbol')} "
+            f"min_sharpe={rules.get('min_sharpe')} "
+            f"min_trades={rules.get('min_trades')} "
+            f"max_drawdown_abs={rules.get('max_drawdown_abs')} "
+            f"corr_threshold={rules.get('corr_threshold')}"
+        )
+
+    ranked = data.get("ranked_table_global", []) or []
+    if ranked:
+        lines.append("  top_strategies:")
+        for row in ranked[:max_rows]:
+            lines.append(
+                "    - "
+                f"{row.get('strategy')} | "
+                f"score={row.get('selection_score')} "
+                f"sharpe={row.get('mean_sharpe_ratio')} "
+                f"sortino={row.get('mean_sortino_ratio')} "
+                f"calmar={row.get('mean_calmar_ratio')} "
+                f"mdd={row.get('mean_max_drawdown')} "
+                f"trades={row.get('total_trades')}"
+            )
+
+    allocs = data.get("selected_allocations", []) or []
+    if allocs:
+        lines.append("  selected_allocations:")
+        for a in allocs[:max_rows]:
+            lines.append(
+                "    - "
+                f"{a.get('symbol')} | "
+                f"{a.get('strategy')} | "
+                f"weight={a.get('weight')} "
+                f"score={a.get('selection_score')}"
+            )
+        if len(allocs) > max_rows:
+            lines.append(f"    ... +{len(allocs) - max_rows} more")
+
+    return "\n".join(lines)
+
+
 def _notify(args: argparse.Namespace, repo_root: Path, payload: dict[str, Any], md_path: Path) -> None:
     if not args.notify:
         return
@@ -181,6 +244,10 @@ def _notify(args: argparse.Namespace, repo_root: Path, payload: dict[str, Any], 
         f"Report: {md_path}\n"
         f"Exit code: {payload['returncode']}\n"
     )
+
+    if args.job in ("nightly", "promotion"):
+        selected_path = (repo_root / args.selected_output).resolve()
+        body += "\n" + _summarize_selection(selected_path) + "\n"
 
     notifier._dispatch(subject, body)  # noqa: SLF001
 
