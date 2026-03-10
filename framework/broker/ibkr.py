@@ -134,10 +134,11 @@ class IBKRBroker:
         port:      Optional[int] = None,
         client_id: int  = 1,
         gateway:   bool = False,
+        timeout:   int  = 10,
     ) -> None:
         self._config          = ConnectionConfig(
             host=host, port=port, client_id=client_id,
-            paper=paper, gateway=gateway,
+            paper=paper, gateway=gateway, timeout=timeout,
         )
         self._ib              = IB()
         self._live_confirmed  = False
