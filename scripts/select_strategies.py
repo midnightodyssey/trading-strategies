@@ -309,7 +309,16 @@ def main() -> None:
         if candidates.empty:
             raise RuntimeError("No candidates available for per_symbol mode")
 
-        for symbol, grp in candidates.groupby("symbol", sort=True):
+        # Rank symbols by their best available strategy score so the cap
+        # selects the strongest names first (instead of alphabetical order).
+        symbol_rank = (
+            candidates.groupby("symbol", dropna=False)["selection_score"]
+            .max()
+            .sort_values(ascending=False)
+        )
+
+        for symbol in symbol_rank.index:
+            grp = candidates[candidates["symbol"] == symbol]
             picks_for_symbol = 0
             grp = grp.sort_values("selection_score", ascending=False)
 
